@@ -1,6 +1,12 @@
 """Controller de coletas: menu e interação com o usuário no terminal."""
 
-from models.pickup import PRIORITIES, PRIORITY_LABELS, STATUS_LABELS, Pickup
+from models.pickup import (
+    PRIORITIES,
+    PRIORITY_LABELS,
+    STATUS_LABELS,
+    STATUSES,
+    Pickup,
+)
 from service.pickup_service import PickupService
 
 HEADERS = ("ID", "Cliente", "Endereço", "Pacotes", "Prioridade", "Status", "Criado em")
@@ -19,9 +25,9 @@ class PickupController:
             print("\n===== FilaFácil Logística =====")
             print("1. Cadastrar coleta")
             print("2. Listar coletas")
-            print("3. Filtrar coletas (Em breve)")
-            print("4. Atualizar status (Em breve)")
-            print("5. Deletar coleta (Em breve)")
+            print("3. Filtrar coletas")
+            print("4. Atualizar status")
+            print("5. Deletar coleta")
             print("0. Sair")
             option = input("Escolha uma opção: ").strip()
 
@@ -29,8 +35,12 @@ class PickupController:
                 self.register()
             elif option == "2":
                 self.list_pickups()
-            elif option in ("3", "4", "5"):
-                print("Em breve.")
+            elif option == "3":
+                self.filter_pickups()
+            elif option == "4":
+                self.update_status()
+            elif option == "5":
+                self.delete_pickup()
             elif option == "0":
                 print("Até logo!")
                 break
@@ -48,14 +58,9 @@ class PickupController:
             print("Quantidade inválida: digite um número inteiro.")
             return
 
-        print("Prioridade:")
-        for number, value in enumerate(PRIORITIES, start=1):
-            print(f"  {number}. {PRIORITY_LABELS[value]}")
-        choice = input("Escolha a prioridade: ").strip()
-        if not choice.isdigit() or not 1 <= int(choice) <= len(PRIORITIES):
-            print("Prioridade inválida: escolha um dos números listados.")
+        priority = self.choose_option("Prioridade", PRIORITIES, PRIORITY_LABELS)
+        if priority is None:
             return
-        priority = PRIORITIES[int(choice) - 1]
 
         try:
             pickup = self.service.register(customer_name, address, package_count, priority)
@@ -82,6 +87,106 @@ class PickupController:
             print("Nenhuma coleta cadastrada.")
             return
         self.print_table(pickups)
+
+    def filter_pickups(self) -> None:
+        """Filtra as coletas por status, prioridade ou nome do cliente."""
+        print("Filtrar por:")
+        print("  1. Status")
+        print("  2. Prioridade")
+        print("  3. Nome do cliente")
+        print("  0. Voltar")
+        choice = input("Escolha uma opção: ").strip()
+
+        if choice == "0":
+            return
+        if choice == "1":
+            field = "status"
+            value = self.choose_option("Status", STATUSES, STATUS_LABELS)
+        elif choice == "2":
+            field = "priority"
+            value = self.choose_option("Prioridade", PRIORITIES, PRIORITY_LABELS)
+        elif choice == "3":
+            field = "name"
+            value = input("Nome (ou parte do nome) do cliente: ")
+        else:
+            print("Opção inválida.")
+            return
+        if value is None:
+            return
+
+        try:
+            pickups = self.service.filter(field, value)
+        except (ValueError, LookupError) as error:
+            print(f"Erro: {error}")
+            return
+
+        if not pickups:
+            print("Nenhuma coleta encontrada para esse filtro.")
+            return
+        self.print_table(pickups)
+
+    def update_status(self) -> None:
+        """Atualiza o status de uma coleta existente."""
+        pickup_id = self.read_id()
+        if pickup_id is None:
+            return
+
+        try:
+            pickup = self.service.get_by_id(pickup_id)
+            print("Coleta atual:")
+            self.print_table([pickup])
+            new_status = self.choose_option("Novo status", STATUSES, STATUS_LABELS)
+            if new_status is None:
+                return
+            updated = self.service.update_status(pickup_id, new_status)
+        except (ValueError, LookupError) as error:
+            print(f"Erro: {error}")
+            return
+        print(
+            f"Status da coleta #{updated.id} alterado para "
+            f"{STATUS_LABELS.get(updated.status, updated.status)}."
+        )
+
+    def delete_pickup(self) -> None:
+        """Deleta uma coleta existente, após confirmação."""
+        pickup_id = self.read_id()
+        if pickup_id is None:
+            return
+
+        try:
+            pickup = self.service.get_by_id(pickup_id)
+            print("Coleta encontrada:")
+            self.print_table([pickup])
+            answer = input("Deseja realmente deletar? (s/n): ").strip().lower()
+            if answer != "s":
+                print("Operação cancelada.")
+                return
+            self.service.delete(pickup_id)
+        except (ValueError, LookupError) as error:
+            print(f"Erro: {error}")
+            return
+        print(f"Coleta #{pickup_id} deletada.")
+
+    def read_id(self) -> int | None:
+        """Pede um ID ao usuário; retorna None (com aviso) se não for número."""
+        try:
+            return int(input("ID da coleta: ").strip())
+        except ValueError:
+            print("ID inválido: digite um número inteiro.")
+            return None
+
+    def choose_option(
+        self, title: str, values: tuple[str, ...], labels: dict[str, str]
+    ) -> str | None:
+        """Mostra opções numeradas em português e retorna o valor em inglês escolhido."""
+        print(f"{title}:")
+        for number, value in enumerate(values, start=1):
+            print(f"  {number}. {labels[value]}")
+        choice = input("Escolha uma opção: ").strip()
+        if not choice.isdigit() or not 1 <= int(choice) <= len(values):
+            print("Opção inválida: escolha um dos números listados.")
+            return None
+        return values[int(choice) - 1]
 
     def print_table(self, pickups: list[Pickup]) -> None:
         """Imprime as coletas em uma tabela alinhada."""

@@ -39,3 +39,59 @@ class PickupRepository:
             statement = select(Pickup).order_by(Pickup.id)
         with SessionLocal() as session:
             return list(session.scalars(statement).all())
+
+    def get_by_id(self, pickup_id: int) -> Pickup | None:
+        """Busca uma coleta pelo id; retorna None se não existir."""
+        # SQL equivalente: SELECT * FROM pickups WHERE id = ?
+        with SessionLocal() as session:
+            return session.get(Pickup, pickup_id)
+
+    def filter_by_status(self, status: str) -> list[Pickup]:
+        """Lista as coletas com o status informado."""
+        # SQL equivalente: SELECT * FROM pickups WHERE status = ? ORDER BY id
+        statement = select(Pickup).where(Pickup.status == status).order_by(Pickup.id)
+        with SessionLocal() as session:
+            return list(session.scalars(statement).all())
+
+    def filter_by_priority(self, priority: str) -> list[Pickup]:
+        """Lista as coletas com a prioridade informada."""
+        # SQL equivalente: SELECT * FROM pickups WHERE priority = ? ORDER BY id
+        statement = select(Pickup).where(Pickup.priority == priority).order_by(Pickup.id)
+        with SessionLocal() as session:
+            return list(session.scalars(statement).all())
+
+    def filter_by_name(self, term: str) -> list[Pickup]:
+        """Lista as coletas cujo cliente contém o termo (sem diferenciar maiúsculas)."""
+        # SQL equivalente:
+        # SELECT * FROM pickups WHERE customer_name LIKE '%' || ? || '%' ORDER BY id
+        # (no SQLite, LIKE já ignora maiúsculas/minúsculas em texto ASCII)
+        statement = (
+            select(Pickup)
+            .where(Pickup.customer_name.ilike(f"%{term}%"))
+            .order_by(Pickup.id)
+        )
+        with SessionLocal() as session:
+            return list(session.scalars(statement).all())
+
+    def update_status(self, pickup_id: int, new_status: str) -> Pickup | None:
+        """Altera o status da coleta; retorna None se ela não existir."""
+        # SQL equivalente: UPDATE pickups SET status = ? WHERE id = ?
+        with SessionLocal() as session:
+            pickup = session.get(Pickup, pickup_id)
+            if pickup is None:
+                return None
+            pickup.status = new_status
+            session.commit()
+            session.refresh(pickup)
+            return pickup
+
+    def delete(self, pickup_id: int) -> bool:
+        """Remove a coleta; retorna False se ela não existir."""
+        # SQL equivalente: DELETE FROM pickups WHERE id = ?
+        with SessionLocal() as session:
+            pickup = session.get(Pickup, pickup_id)
+            if pickup is None:
+                return False
+            session.delete(pickup)
+            session.commit()
+            return True
