@@ -63,8 +63,8 @@ class PickupRepository:
     def filter_by_name(self, term: str) -> list[Pickup]:
         """Lista as coletas cujo cliente contém o termo (sem diferenciar maiúsculas)."""
         # SQL equivalente:
-        # SELECT * FROM pickups WHERE customer_name LIKE '%' || ? || '%' ORDER BY id
-        # (no SQLite, LIKE já ignora maiúsculas/minúsculas em texto ASCII)
+        # SELECT * FROM pickups WHERE lower(customer_name) LIKE lower(?) ORDER BY id
+        # (o parâmetro recebe '%termo%')
         statement = (
             select(Pickup)
             .where(Pickup.customer_name.ilike(f"%{term}%"))

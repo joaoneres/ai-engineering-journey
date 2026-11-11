@@ -183,7 +183,7 @@ class PickupController:
         for number, value in enumerate(values, start=1):
             print(f"  {number}. {labels[value]}")
         choice = input("Escolha uma opção: ").strip()
-        if not choice.isdigit() or not 1 <= int(choice) <= len(values):
+        if not choice.isdecimal() or not 1 <= int(choice) <= len(values):
             print("Opção inválida: escolha um dos números listados.")
             return None
         return values[int(choice) - 1]

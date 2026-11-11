@@ -5,6 +5,10 @@ from repository.pickup_repository import PickupRepository
 
 ORDER_OPTIONS = ("id", "date")
 FILTER_FIELDS = ("status", "priority", "name")
+MAX_NAME_LENGTH = 100
+MAX_ADDRESS_LENGTH = 200
+MAX_PACKAGE_COUNT = 1_000_000
+MAX_ID = 2**63 - 1  # maior inteiro aceito pelo SQLite
 
 
 class PickupService:
@@ -27,14 +31,20 @@ class PickupService:
         address = address.strip()
         if not customer_name:
             raise ValueError("O nome do cliente é obrigatório.")
+        if len(customer_name) > MAX_NAME_LENGTH:
+            raise ValueError(f"O nome do cliente deve ter no máximo {MAX_NAME_LENGTH} caracteres.")
         if not address:
             raise ValueError("O endereço é obrigatório.")
+        if len(address) > MAX_ADDRESS_LENGTH:
+            raise ValueError(f"O endereço deve ter no máximo {MAX_ADDRESS_LENGTH} caracteres.")
         if (
             isinstance(package_count, bool)
             or not isinstance(package_count, int)
             or package_count <= 0
         ):
             raise ValueError("A quantidade de pacotes deve ser um número inteiro maior que 0.")
+        if package_count > MAX_PACKAGE_COUNT:
+            raise ValueError(f"A quantidade de pacotes deve ser no máximo {MAX_PACKAGE_COUNT}.")
 
         priority = priority.strip().lower()
         status = status.strip().lower()
@@ -53,6 +63,8 @@ class PickupService:
 
     def get_by_id(self, pickup_id: int) -> Pickup:
         """Retorna a coleta ou lança LookupError se ela não existir."""
+        if not 0 < pickup_id <= MAX_ID:
+            raise LookupError(f"Coleta #{pickup_id} não encontrada")
         pickup = self.repository.get_by_id(pickup_id)
         if pickup is None:
             raise LookupError(f"Coleta #{pickup_id} não encontrada")
