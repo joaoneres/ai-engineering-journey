@@ -51,6 +51,8 @@ Single table: `pickups`.
 | `status` | String(20) | `pending`, `in_transit`, `collected` or `canceled`; default `pending` |
 | `created_at` | DateTime | Filled automatically on insert |
 
+The table also has `CHECK` constraints, so the database itself rejects `package_count <= 0` and any `priority` or `status` outside the accepted values, even for inserts that bypass the application.
+
 The database always stores the English values. The menu shows Portuguese labels:
 
 | `priority` | Menu label | | `status` | Menu label |

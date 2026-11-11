@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String
+from sqlalchemy import CheckConstraint, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
@@ -41,3 +41,16 @@ class Pickup(Base):
             f"package_count={self.package_count}, priority={self.priority!r}, "
             f"status={self.status!r})"
         )
+
+
+# Regras de integridade no próprio banco (expressões do ORM, sem SQL manual).
+_columns = Pickup.__table__.c
+Pickup.__table__.append_constraint(
+    CheckConstraint(_columns.package_count > 0, name="ck_pickups_package_count_positive")
+)
+Pickup.__table__.append_constraint(
+    CheckConstraint(_columns.priority.in_(PRIORITIES), name="ck_pickups_priority_valid")
+)
+Pickup.__table__.append_constraint(
+    CheckConstraint(_columns.status.in_(STATUSES), name="ck_pickups_status_valid")
+)
