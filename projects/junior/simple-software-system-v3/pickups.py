@@ -1,8 +1,10 @@
 """Business rules for pickups."""
 
+import logging
 from functools import reduce
 
-from constants import INITIAL_STATUS, PRIORITIES, STATUSES
+import repository
+from constants import DATA_FILE, INITIAL_STATUS, PRIORITIES, STATUSES
 
 
 def next_id(pickups: list[dict]) -> int:
@@ -45,6 +47,15 @@ def is_valid_pickup(pickup: object) -> bool:
     except ValueError:
         return False
     return True
+
+
+def load_pickups() -> list[dict]:
+    """Read the pickups from the repository; discard everything if any record is invalid."""
+    records = repository.find_all()
+    if not all(map(is_valid_pickup, records)):
+        logging.warning("Arquivo %s com coletas em formato inválido", DATA_FILE)
+        return []
+    return records
 
 
 def register_pickup(

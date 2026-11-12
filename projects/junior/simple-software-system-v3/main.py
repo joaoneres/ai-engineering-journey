@@ -3,6 +3,7 @@
 import logging
 
 import cli
+import repository
 from constants import LOG_FILE, PRIORITY_LABELS, STATUS_LABELS
 from pickups import (
     build_summary,
@@ -10,10 +11,10 @@ from pickups import (
     filter_by_status,
     find_by_id,
     list_pickups,
+    load_pickups,
     register_pickup,
     update_status,
 )
-from storage import load_pickups, save_pickups
 
 
 def show_menu() -> None:
@@ -40,8 +41,8 @@ def create_pickup(pickups: list[dict]) -> list[dict]:
         cli.print_message(str(error))
         return pickups
     try:
-        save_pickups(updated)
-    except OSError:
+        repository.save_all(updated)
+    except repository.RepositoryError:
         cli.print_message("Não foi possível salvar a coleta. Tente novamente.")
         return pickups
     new_pickup = updated[-1]
@@ -77,8 +78,8 @@ def change_status(pickups: list[dict]) -> list[dict]:
         cli.print_message(str(error))
         return pickups
     try:
-        save_pickups(updated)
-    except OSError:
+        repository.save_all(updated)
+    except repository.RepositoryError:
         cli.print_message("Não foi possível salvar a alteração. Tente novamente.")
         return pickups
     logging.info(
