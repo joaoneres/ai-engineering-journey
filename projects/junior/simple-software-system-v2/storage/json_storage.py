@@ -37,7 +37,7 @@ def _write(pickups: list[dict], path: Path) -> None:
         with open(temp_path, "w", encoding="utf-8") as file:
             json.dump(pickups, file, indent=2, ensure_ascii=False)
         os.replace(temp_path, path)
-    except OSError as error:
+    except (OSError, TypeError, ValueError) as error:
         logging.error("Falha ao gravar %s", path.name, exc_info=True)
         temp_path.unlink(missing_ok=True)
         raise FileError(f"Não foi possível salvar os dados em {path.name}.") from error
