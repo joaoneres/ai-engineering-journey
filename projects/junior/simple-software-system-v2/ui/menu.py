@@ -1,11 +1,12 @@
 """Interactive menu: reads input, calls the services and prints the results."""
 
+import asyncio
 import logging
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 
 from constants import LOG_FILE, PRIORITY_LABELS, STATUS_LABELS
 from domain import pickups as rules
-from errors import FilaFacilError
+from errors import ApiError, FilaFacilError
 from services import pickup_service
 from storage import json_storage
 from ui import cli
@@ -27,25 +28,44 @@ def show_menu() -> None:
     print("\n".join(MENU_OPTIONS))
 
 
-def create_pickup(pickups: list[dict]) -> list[dict]:
-    """Read the data and register the pickup."""
+async def ask_location(cep: str | None) -> tuple[bool, dict | None]:
+    """Query the CEP API; return (continue?, location). On failure ask what to do."""
+    if cep is None:
+        return True, None
+    cli.print_message("Consultando CEP...")
+    try:
+        return True, await pickup_service.lookup_location(cep)
+    except ApiError as error:
+        cli.print_message(str(error))
+        return cli.confirm("Cadastrar a coleta sem os dados do CEP?"), None
+
+
+async def create_pickup(pickups: list[dict]) -> list[dict]:
+    """Read the data, enrich it with the CEP API and register the pickup."""
     customer_name = cli.read_text("Nome do cliente")
     address = cli.read_text("Endereço")
+    cep = cli.read_cep()
     package_count = cli.read_int("Quantidade de pacotes")
     priority = cli.read_option("Prioridade:", PRIORITY_LABELS)
-    updated = pickup_service.create_pickup(pickups, customer_name, address, package_count, priority)
+    proceed, location = await ask_location(cep)
+    if not proceed:
+        cli.print_message("Cadastro cancelado")
+        return pickups
+    updated = await pickup_service.create_pickup(
+        pickups, customer_name, address, package_count, priority, location
+    )
     cli.print_message(f"Coleta #{updated[-1]['id']} cadastrada")
     return updated
 
 
-def show_filtered(pickups: list[dict], field: str, title: str, labels: dict) -> list[dict]:
+async def show_filtered(pickups: list[dict], field: str, title: str, labels: dict) -> list[dict]:
     """Ask for a value of the field and show the matching pickups."""
     value = cli.read_option(title, labels)
     cli.print_table(rules.filter_by(pickups, field, value))
     return pickups
 
 
-def change_status(pickups: list[dict]) -> list[dict]:
+async def change_status(pickups: list[dict]) -> list[dict]:
     """Ask for the pickup and the new status, then update it."""
     pickup_id = cli.read_int("ID da coleta")
     pickup = rules.find_by_id(pickups, pickup_id)
@@ -53,26 +73,28 @@ def change_status(pickups: list[dict]) -> list[dict]:
         raise rules.NotFoundError(f"Coleta #{pickup_id} não encontrada")
     cli.print_table([pickup])
     new_status = cli.read_option("Novo status:", STATUS_LABELS)
-    updated = pickup_service.change_status(pickups, pickup_id, new_status)
+    updated = await pickup_service.change_status(pickups, pickup_id, new_status)
     cli.print_message(
         f"Status da coleta #{pickup_id} atualizado para {STATUS_LABELS[new_status]}"
     )
     return updated
 
 
-def show_all(pickups: list[dict]) -> list[dict]:
+async def show_all(pickups: list[dict]) -> list[dict]:
     """Show every pickup sorted by id."""
     cli.print_table(rules.list_pickups(pickups))
     return pickups
 
 
-def show_summary(pickups: list[dict]) -> list[dict]:
+async def show_summary(pickups: list[dict]) -> list[dict]:
     """Show the operational summary."""
     cli.print_summary(rules.build_summary(pickups))
     return pickups
 
 
-ACTIONS: dict[str, Callable[[list[dict]], list[dict]]] = {
+Action = Callable[[list[dict]], Awaitable[list[dict]]]
+
+ACTIONS: dict[str, Action] = {
     "1": create_pickup,
     "2": show_all,
     "3": lambda p: show_filtered(p, "status", "Status:", STATUS_LABELS),
@@ -82,10 +104,10 @@ ACTIONS: dict[str, Callable[[list[dict]], list[dict]]] = {
 }
 
 
-def run_action(action: Callable, pickups: list[dict]) -> list[dict]:
+async def run_action(action: Action, pickups: list[dict]) -> list[dict]:
     """Run an action; on an expected error show it and keep the current list."""
     try:
-        return action(pickups)
+        return await action(pickups)
     except FilaFacilError as error:
         cli.print_message(str(error))
         return pickups
@@ -99,7 +121,7 @@ def run() -> None:
         format="%(asctime)s [%(levelname)s] %(message)s",
     )
     logging.info("Sistema iniciado")
-    pickups = json_storage.load_pickups()
+    pickups = asyncio.run(json_storage.load_pickups())
     try:
         while True:
             show_menu()
@@ -111,7 +133,7 @@ def run() -> None:
             if action is None:
                 cli.print_message("Opção inválida. Tente novamente.")
             else:
-                pickups = run_action(action, pickups)
+                pickups = asyncio.run(run_action(action, pickups))
     except (KeyboardInterrupt, EOFError):
         print()
         cli.print_message("Encerrado pelo usuário. Até logo!")

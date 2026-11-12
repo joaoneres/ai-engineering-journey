@@ -1,10 +1,12 @@
 """Terminal input and output."""
 
 from constants import PRIORITY_LABELS, STATUS_LABELS
+from domain.pickups import normalize_cep
+from errors import InputError
 
 MAX_DIGITS = 9
-ROW_FORMAT = "{:<4} | {:<20} | {:<30} | {:>7} | {:<10} | {:<10}"
-HEADERS = ("ID", "Cliente", "Endereço", "Pacotes", "Prioridade", "Status")
+ROW_FORMAT = "{:<4} | {:<20} | {:<30} | {:<16} | {:>7} | {:<10} | {:<10}"
+HEADERS = ("ID", "Cliente", "Endereço", "Cidade/UF", "Pacotes", "Prioridade", "Status")
 
 
 def print_message(text: str) -> None:
@@ -56,12 +58,36 @@ def fit(text: str, width: int) -> str:
     return text if len(text) <= width else text[: width - 1] + "…"
 
 
+def format_city(pickup: dict) -> str:
+    """Return 'City/UF' from the API data, or '-' when the pickup was not enriched."""
+    city, state = pickup.get("city"), pickup.get("state")
+    return f"{city}/{state}" if city and state else "-"
+
+
+def read_cep() -> str | None:
+    """Ask for an optional CEP; Enter skips it. Ask again while the format is wrong."""
+    while True:
+        raw = input("CEP (Enter para pular): ").strip()
+        if not raw:
+            return None
+        try:
+            return normalize_cep(raw)
+        except InputError as error:
+            print_message(str(error))
+
+
+def confirm(prompt: str) -> bool:
+    """Ask a yes/no question; anything other than s/sim means no."""
+    return input(f"{prompt} (s/n): ").strip().lower() in ("s", "sim")
+
+
 def to_display_row(pickup: dict) -> str:
     """Turn a pickup into an aligned table row."""
     return ROW_FORMAT.format(
         pickup["id"],
         fit(pickup["customer_name"], 20),
         fit(pickup["address"], 30),
+        fit(format_city(pickup), 16),
         pickup["package_count"],
         PRIORITY_LABELS[pickup["priority"]],
         STATUS_LABELS[pickup["status"]],

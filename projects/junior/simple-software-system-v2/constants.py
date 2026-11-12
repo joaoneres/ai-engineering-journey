@@ -15,3 +15,8 @@ INITIAL_STATUS = "pending"
 
 PRIORITY_LABELS = {"low": "Baixa", "medium": "Média", "high": "Alta"}
 STATUS_LABELS = {"pending": "Pendente", "in_transit": "Em rota", "completed": "Concluída"}
+
+# External REST API (ViaCEP): public, no key required.
+VIACEP_URL = "https://viacep.com.br/ws/{cep}/json/"
+API_TIMEOUT_SECONDS = 5
+CEP_LENGTH = 8

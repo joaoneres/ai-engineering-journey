@@ -2,7 +2,7 @@
 
 from functools import reduce
 
-from constants import INITIAL_STATUS, PRIORITIES, STATUSES
+from constants import CEP_LENGTH, INITIAL_STATUS, PRIORITIES, STATUSES
 from errors import InputError, NotFoundError
 
 FILTER_OPTIONS = {
@@ -14,6 +14,14 @@ FILTER_OPTIONS = {
 def next_id(pickups: list[dict]) -> int:
     """Return the next available id (highest id + 1, or 1 if empty)."""
     return max((pickup["id"] for pickup in pickups), default=0) + 1
+
+
+def normalize_cep(raw: str) -> str:
+    """Return the CEP as 8 digits; raise InputError if it has another format."""
+    digits = raw.strip().replace("-", "")
+    if len(digits) != CEP_LENGTH or not digits.isdecimal():
+        raise InputError("CEP inválido. Digite 8 números, por exemplo 01001-000.")
+    return digits
 
 
 def validate_pickup_data(
@@ -59,8 +67,13 @@ def register_pickup(
     address: str,
     package_count: int,
     priority: str,
+    location: dict | None = None,
 ) -> list[dict]:
-    """Validate and return a new list with the pickup added."""
+    """Validate and return a new list with the pickup added.
+
+    `location` holds the data returned by the CEP API; when it is None the
+    pickup is saved without enrichment (`enriched` is False).
+    """
     validate_pickup_data(customer_name, address, package_count, priority)
     new_pickup = {
         "id": next_id(pickups),
@@ -69,6 +82,8 @@ def register_pickup(
         "package_count": package_count,
         "priority": priority,
         "status": INITIAL_STATUS,
+        "enriched": location is not None,
+        **(location or {}),
     }
     return [*pickups, new_pickup]
 
