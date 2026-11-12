@@ -3,18 +3,8 @@
 import logging
 
 import cli
-import repository
+import service
 from constants import LOG_FILE, PRIORITY_LABELS, STATUS_LABELS
-from pickups import (
-    build_summary,
-    filter_by_priority,
-    filter_by_status,
-    find_by_id,
-    list_pickups,
-    load_pickups,
-    register_pickup,
-    update_status,
-)
 
 
 def show_menu() -> None:
@@ -29,66 +19,57 @@ def show_menu() -> None:
     print("0. Sair")
 
 
-def create_pickup(pickups: list[dict]) -> list[dict]:
-    """Read the data, register and save the pickup; return the updated list."""
+def create_pickup() -> None:
+    """Read the data and ask the service to register the pickup."""
     customer_name = cli.read_text("Nome do cliente")
     address = cli.read_text("Endereço")
     package_count = cli.read_int("Quantidade de pacotes")
     priority = cli.read_option("Prioridade:", PRIORITY_LABELS)
     try:
-        updated = register_pickup(pickups, customer_name, address, package_count, priority)
+        new_pickup = service.register_pickup(customer_name, address, package_count, priority)
     except ValueError as error:
         cli.print_message(str(error))
-        return pickups
-    try:
-        repository.save_all(updated)
-    except repository.RepositoryError:
+    except service.SaveError:
         cli.print_message("Não foi possível salvar a coleta. Tente novamente.")
-        return pickups
-    new_pickup = updated[-1]
-    logging.info("Coleta cadastrada: id=%s cliente=%s", new_pickup["id"], new_pickup["customer_name"])
-    cli.print_message(f"Coleta #{new_pickup['id']} cadastrada")
-    return updated
+    else:
+        cli.print_message(f"Coleta #{new_pickup['id']} cadastrada")
 
 
-def show_by_status(pickups: list[dict]) -> None:
-    """Ask for a status and show the matching pickups."""
-    status = cli.read_option("Status:", STATUS_LABELS)
-    cli.print_table(filter_by_status(pickups, status))
+def show_filtered(field: str, prompt: str, labels: dict[str, str]) -> None:
+    """Ask for a value of the field and show the matching pickups."""
+    value = cli.read_option(prompt, labels)
+    cli.print_table(service.filter_by(field, value))
 
 
-def show_by_priority(pickups: list[dict]) -> None:
-    """Ask for a priority and show the matching pickups."""
-    priority = cli.read_option("Prioridade:", PRIORITY_LABELS)
-    cli.print_table(filter_by_priority(pickups, priority))
-
-
-def change_status(pickups: list[dict]) -> list[dict]:
-    """Update the status of a pickup and save; return the updated list."""
+def change_status() -> None:
+    """Ask for a pickup and a new status and ask the service to update it."""
     pickup_id = cli.read_int("ID da coleta")
-    pickup = find_by_id(pickups, pickup_id)
+    pickup = service.find_pickup(pickup_id)
     if pickup is None:
         cli.print_message(f"Coleta #{pickup_id} não encontrada")
-        return pickups
+        return
     cli.print_table([pickup])
     new_status = cli.read_option("Novo status:", STATUS_LABELS)
     try:
-        updated = update_status(pickups, pickup_id, new_status)
+        service.change_status(pickup_id, new_status)
     except (ValueError, LookupError) as error:
         cli.print_message(str(error))
-        return pickups
-    try:
-        repository.save_all(updated)
-    except repository.RepositoryError:
+    except service.SaveError:
         cli.print_message("Não foi possível salvar a alteração. Tente novamente.")
-        return pickups
-    logging.info(
-        "Status atualizado: id=%s de %s para %s", pickup_id, pickup["status"], new_status
-    )
-    cli.print_message(
-        f"Status da coleta #{pickup_id} atualizado para {STATUS_LABELS[new_status]}"
-    )
-    return updated
+    else:
+        cli.print_message(
+            f"Status da coleta #{pickup_id} atualizado para {STATUS_LABELS[new_status]}"
+        )
+
+
+ACTIONS = {
+    "1": create_pickup,
+    "2": lambda: cli.print_table(service.list_pickups()),
+    "3": lambda: show_filtered("status", "Status:", STATUS_LABELS),
+    "4": lambda: show_filtered("priority", "Prioridade:", PRIORITY_LABELS),
+    "5": change_status,
+    "6": lambda: cli.print_summary(service.get_summary()),
+}
 
 
 def main() -> None:
@@ -99,7 +80,6 @@ def main() -> None:
         format="%(asctime)s [%(levelname)s] %(message)s",
     )
     logging.info("Sistema iniciado")
-    pickups = load_pickups()
     try:
         while True:
             show_menu()
@@ -107,20 +87,11 @@ def main() -> None:
             if option == "0":
                 cli.print_message("Até logo!")
                 break
-            elif option == "1":
-                pickups = create_pickup(pickups)
-            elif option == "2":
-                cli.print_table(list_pickups(pickups))
-            elif option == "3":
-                show_by_status(pickups)
-            elif option == "4":
-                show_by_priority(pickups)
-            elif option == "5":
-                pickups = change_status(pickups)
-            elif option == "6":
-                cli.print_summary(build_summary(pickups))
-            else:
+            action = ACTIONS.get(option)
+            if action is None:
                 cli.print_message("Opção inválida. Tente novamente.")
+            else:
+                action()
     except (KeyboardInterrupt, EOFError):
         print()
         cli.print_message("Encerrado pelo usuário. Até logo!")
