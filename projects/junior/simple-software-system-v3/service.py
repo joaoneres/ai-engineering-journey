@@ -4,7 +4,7 @@ import logging
 from functools import reduce
 
 import repository
-from constants import DATA_FILE, INITIAL_STATUS, PRIORITIES, STATUSES
+from constants import INITIAL_STATUS, PRIORITIES, STATUSES
 
 class SaveError(Exception):
     """The pickups could not be saved."""
@@ -137,7 +137,7 @@ def load_pickups() -> list[dict]:
     """Read the pickups; discard everything if any stored record is invalid."""
     records = repository.find_all()
     if not all(map(is_valid_pickup, records)):
-        logging.warning("Arquivo %s com coletas em formato inválido", DATA_FILE)
+        logging.warning("Coletas armazenadas em formato inválido; iniciando sem coletas")
         return []
     return records
 
