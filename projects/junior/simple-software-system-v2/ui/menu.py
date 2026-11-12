@@ -48,6 +48,7 @@ async def ask_location(cep: str | None) -> tuple[bool, dict | None]:
     try:
         return True, await pickup_service.lookup_location(cep)
     except ApiError as error:
+        logging.warning("Erro (%s): %s", error.kind, error)
         cli.print_message(str(error))
         return cli.confirm("Cadastrar a coleta sem os dados do CEP?"), None
 

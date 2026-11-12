@@ -154,4 +154,4 @@ Work done on branch `feature/module-2-refactor-api-tests`, with one commit per p
 
 ## 11. Author
 
-João França
+João Vitor
