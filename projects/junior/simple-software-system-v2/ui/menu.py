@@ -1,4 +1,4 @@
-"""Interactive menu: reads input, calls the services and prints the results."""
+"""Interactive menu: reads input, calls the services and keeps the AppState updated."""
 
 import asyncio
 import logging
@@ -6,8 +6,10 @@ from collections.abc import Awaitable, Callable
 
 from constants import LOG_FILE, PRIORITY_LABELS, STATUS_LABELS
 from domain import pickups as rules
-from errors import ApiError, FilaFacilError
+from errors import ApiError, FilaFacilError, NotFoundError
 from services import pickup_service
+from state import app_state as app
+from state.app_state import AppState
 from storage import json_storage
 from ui import cli
 
@@ -18,14 +20,24 @@ MENU_OPTIONS = (
     "4. Filtrar por prioridade",
     "5. Atualizar status",
     "6. Resumo operacional",
+    "7. Limpar filtros",
     "0. Sair",
 )
+FILTER_LABELS = {"status": STATUS_LABELS, "priority": PRIORITY_LABELS}
+FILTER_TITLES = {"status": "Status", "priority": "Prioridade"}
 
 
 def show_menu() -> None:
     """Print the main menu."""
     print("\n=== FilaFácil Logística ===")
     print("\n".join(MENU_OPTIONS))
+
+
+def describe_filters(filters: dict) -> str:
+    """Describe the active filters, e.g. 'Status: Pendente | Prioridade: Alta'."""
+    return " | ".join(
+        f"{FILTER_TITLES[name]}: {FILTER_LABELS[name][value]}" for name, value in filters.items()
+    )
 
 
 async def ask_location(cep: str | None) -> tuple[bool, dict | None]:
@@ -40,7 +52,7 @@ async def ask_location(cep: str | None) -> tuple[bool, dict | None]:
         return cli.confirm("Cadastrar a coleta sem os dados do CEP?"), None
 
 
-async def create_pickup(pickups: list[dict]) -> list[dict]:
+async def create_pickup(state: AppState) -> AppState:
     """Read the data, enrich it with the CEP API and register the pickup."""
     customer_name = cli.read_text("Nome do cliente")
     address = cli.read_text("Endereço")
@@ -50,67 +62,77 @@ async def create_pickup(pickups: list[dict]) -> list[dict]:
     proceed, location = await ask_location(cep)
     if not proceed:
         cli.print_message("Cadastro cancelado")
-        return pickups
+        return state
     updated = await pickup_service.create_pickup(
-        pickups, customer_name, address, package_count, priority, location
+        state.pickups, customer_name, address, package_count, priority, location
     )
     cli.print_message(f"Coleta #{updated[-1]['id']} cadastrada")
-    return updated
+    return app.set_pickups(state, updated)
 
 
-async def show_filtered(pickups: list[dict], field: str, title: str, labels: dict) -> list[dict]:
-    """Ask for a value of the field and show the matching pickups."""
-    value = cli.read_option(title, labels)
-    cli.print_table(rules.filter_by(pickups, field, value))
-    return pickups
+async def show_all(state: AppState) -> AppState:
+    """Show the pickups that match the active filters, sorted by id."""
+    if state.filters:
+        cli.print_message(f"Filtros ativos: {describe_filters(state.filters)}")
+    cli.print_table(rules.list_pickups(app.visible_pickups(state)))
+    return state
 
 
-async def change_status(pickups: list[dict]) -> list[dict]:
+async def apply_filter(state: AppState, field_name: str) -> AppState:
+    """Ask for a value, activate the filter and show the result."""
+    value = cli.read_option(f"{FILTER_TITLES[field_name]}:", FILTER_LABELS[field_name])
+    return await show_all(app.set_filter(state, field_name, value))
+
+
+async def clear_filters(state: AppState) -> AppState:
+    """Remove every active filter."""
+    cli.print_message("Filtros removidos")
+    return app.clear_filters(state)
+
+
+async def change_status(state: AppState) -> AppState:
     """Ask for the pickup and the new status, then update it."""
     pickup_id = cli.read_int("ID da coleta")
-    pickup = rules.find_by_id(pickups, pickup_id)
+    pickup = rules.find_by_id(state.pickups, pickup_id)
     if pickup is None:
-        raise rules.NotFoundError(f"Coleta #{pickup_id} não encontrada")
+        raise NotFoundError(f"Coleta #{pickup_id} não encontrada")
     cli.print_table([pickup])
     new_status = cli.read_option("Novo status:", STATUS_LABELS)
-    updated = await pickup_service.change_status(pickups, pickup_id, new_status)
+    updated = await pickup_service.change_status(state.pickups, pickup_id, new_status)
     cli.print_message(
         f"Status da coleta #{pickup_id} atualizado para {STATUS_LABELS[new_status]}"
     )
-    return updated
+    return app.set_pickups(state, updated)
 
 
-async def show_all(pickups: list[dict]) -> list[dict]:
-    """Show every pickup sorted by id."""
-    cli.print_table(rules.list_pickups(pickups))
-    return pickups
+async def show_summary(state: AppState) -> AppState:
+    """Show the operational summary of all pickups."""
+    cli.print_summary(rules.build_summary(state.pickups))
+    return state
 
 
-async def show_summary(pickups: list[dict]) -> list[dict]:
-    """Show the operational summary."""
-    cli.print_summary(rules.build_summary(pickups))
-    return pickups
-
-
-Action = Callable[[list[dict]], Awaitable[list[dict]]]
+Action = Callable[[AppState], Awaitable[AppState]]
 
 ACTIONS: dict[str, Action] = {
     "1": create_pickup,
     "2": show_all,
-    "3": lambda p: show_filtered(p, "status", "Status:", STATUS_LABELS),
-    "4": lambda p: show_filtered(p, "priority", "Prioridade:", PRIORITY_LABELS),
+    "3": lambda s: apply_filter(s, "status"),
+    "4": lambda s: apply_filter(s, "priority"),
     "5": change_status,
     "6": show_summary,
+    "7": clear_filters,
 }
 
 
-async def run_action(action: Action, pickups: list[dict]) -> list[dict]:
-    """Run an action; on an expected error show it and keep the current list."""
+async def run_action(action: Action, state: AppState) -> AppState:
+    """Run an action tracking loading and errors; never let an expected error escape."""
+    state = app.set_loading(app.clear_error(state), True)
     try:
-        return await action(pickups)
+        return app.set_loading(await action(state), False)
     except FilaFacilError as error:
+        logging.warning("Erro (%s): %s", error.kind, error)
         cli.print_message(str(error))
-        return pickups
+        return app.set_loading(app.set_error(state, error), False)
 
 
 def run() -> None:
@@ -121,7 +143,7 @@ def run() -> None:
         format="%(asctime)s [%(levelname)s] %(message)s",
     )
     logging.info("Sistema iniciado")
-    pickups = asyncio.run(json_storage.load_pickups())
+    state = app.initial_state(asyncio.run(json_storage.load_pickups()))
     try:
         while True:
             show_menu()
@@ -133,7 +155,7 @@ def run() -> None:
             if action is None:
                 cli.print_message("Opção inválida. Tente novamente.")
             else:
-                pickups = asyncio.run(run_action(action, pickups))
+                state = asyncio.run(run_action(action, state))
     except (KeyboardInterrupt, EOFError):
         print()
         cli.print_message("Encerrado pelo usuário. Até logo!")
