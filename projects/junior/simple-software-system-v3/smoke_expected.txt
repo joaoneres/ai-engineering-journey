@@ -1,0 +1,277 @@
+--- exit code 0
+
+=== FilaFácil Logística ===
+1. Cadastrar coleta
+2. Listar coletas
+3. Filtrar por status
+4. Filtrar por prioridade
+5. Atualizar status
+6. Resumo operacional
+0. Sair
+Escolha uma opção: Nome do cliente: Endereço: Quantidade de pacotes: >> Digite apenas números inteiros.
+Quantidade de pacotes: Prioridade:
+1. Baixa
+2. Média
+3. Alta
+Escolha uma opção: >> Coleta #1 cadastrada
+
+=== FilaFácil Logística ===
+1. Cadastrar coleta
+2. Listar coletas
+3. Filtrar por status
+4. Filtrar por prioridade
+5. Atualizar status
+6. Resumo operacional
+0. Sair
+Escolha uma opção: Nome do cliente: >> O campo não pode ficar vazio.
+Nome do cliente: Endereço: Quantidade de pacotes: >> O valor deve ser maior ou igual a 1.
+Quantidade de pacotes: Prioridade:
+1. Baixa
+2. Média
+3. Alta
+Escolha uma opção: >> Opção inexistente.
+Prioridade:
+1. Baixa
+2. Média
+3. Alta
+Escolha uma opção: >> Coleta #2 cadastrada
+
+=== FilaFácil Logística ===
+1. Cadastrar coleta
+2. Listar coletas
+3. Filtrar por status
+4. Filtrar por prioridade
+5. Atualizar status
+6. Resumo operacional
+0. Sair
+Escolha uma opção: Nome do cliente: Endereço: Quantidade de pacotes: Prioridade:
+1. Baixa
+2. Média
+3. Alta
+Escolha uma opção: >> Coleta #3 cadastrada
+
+=== FilaFácil Logística ===
+1. Cadastrar coleta
+2. Listar coletas
+3. Filtrar por status
+4. Filtrar por prioridade
+5. Atualizar status
+6. Resumo operacional
+0. Sair
+Escolha uma opção: ID   | Cliente              | Endereço                       | Pacotes | Prioridade | Status    
+------------------------------------------------------------------------------------------------
+1    | Ana Souza            | Rua A, 10                      |       3 | Alta       | Pendente  
+2    | Bruno Lima           | Av. Central, 500 - Sala 12 - … |       2 | Média      | Pendente  
+3    | Carla Dias           | Rua C, 3                       |       5 | Baixa      | Pendente  
+
+=== FilaFácil Logística ===
+1. Cadastrar coleta
+2. Listar coletas
+3. Filtrar por status
+4. Filtrar por prioridade
+5. Atualizar status
+6. Resumo operacional
+0. Sair
+Escolha uma opção: Status:
+1. Pendente
+2. Em rota
+3. Concluída
+Escolha uma opção: ID   | Cliente              | Endereço                       | Pacotes | Prioridade | Status    
+------------------------------------------------------------------------------------------------
+1    | Ana Souza            | Rua A, 10                      |       3 | Alta       | Pendente  
+2    | Bruno Lima           | Av. Central, 500 - Sala 12 - … |       2 | Média      | Pendente  
+3    | Carla Dias           | Rua C, 3                       |       5 | Baixa      | Pendente  
+
+=== FilaFácil Logística ===
+1. Cadastrar coleta
+2. Listar coletas
+3. Filtrar por status
+4. Filtrar por prioridade
+5. Atualizar status
+6. Resumo operacional
+0. Sair
+Escolha uma opção: Prioridade:
+1. Baixa
+2. Média
+3. Alta
+Escolha uma opção: ID   | Cliente              | Endereço                       | Pacotes | Prioridade | Status    
+------------------------------------------------------------------------------------------------
+1    | Ana Souza            | Rua A, 10                      |       3 | Alta       | Pendente  
+
+=== FilaFácil Logística ===
+1. Cadastrar coleta
+2. Listar coletas
+3. Filtrar por status
+4. Filtrar por prioridade
+5. Atualizar status
+6. Resumo operacional
+0. Sair
+Escolha uma opção: ID da coleta: >> Coleta #99 não encontrada
+
+=== FilaFácil Logística ===
+1. Cadastrar coleta
+2. Listar coletas
+3. Filtrar por status
+4. Filtrar por prioridade
+5. Atualizar status
+6. Resumo operacional
+0. Sair
+Escolha uma opção: ID da coleta: ID   | Cliente              | Endereço                       | Pacotes | Prioridade | Status    
+------------------------------------------------------------------------------------------------
+1    | Ana Souza            | Rua A, 10                      |       3 | Alta       | Pendente  
+Novo status:
+1. Pendente
+2. Em rota
+3. Concluída
+Escolha uma opção: >> Status da coleta #1 atualizado para Em rota
+
+=== FilaFácil Logística ===
+1. Cadastrar coleta
+2. Listar coletas
+3. Filtrar por status
+4. Filtrar por prioridade
+5. Atualizar status
+6. Resumo operacional
+0. Sair
+Escolha uma opção: ID da coleta: ID   | Cliente              | Endereço                       | Pacotes | Prioridade | Status    
+------------------------------------------------------------------------------------------------
+2    | Bruno Lima           | Av. Central, 500 - Sala 12 - … |       2 | Média      | Pendente  
+Novo status:
+1. Pendente
+2. Em rota
+3. Concluída
+Escolha uma opção: >> Status da coleta #2 atualizado para Concluída
+
+=== FilaFácil Logística ===
+1. Cadastrar coleta
+2. Listar coletas
+3. Filtrar por status
+4. Filtrar por prioridade
+5. Atualizar status
+6. Resumo operacional
+0. Sair
+Escolha uma opção: ID da coleta: ID   | Cliente              | Endereço                       | Pacotes | Prioridade | Status    
+------------------------------------------------------------------------------------------------
+1    | Ana Souza            | Rua A, 10                      |       3 | Alta       | Em rota   
+Novo status:
+1. Pendente
+2. Em rota
+3. Concluída
+Escolha uma opção: >> A coleta já está com esse status.
+
+=== FilaFácil Logística ===
+1. Cadastrar coleta
+2. Listar coletas
+3. Filtrar por status
+4. Filtrar por prioridade
+5. Atualizar status
+6. Resumo operacional
+0. Sair
+Escolha uma opção: ===== Resumo operacional =====
+Total de coletas: 3 | Total de pacotes: 10
+Por prioridade: Alta 1 | Média 1 | Baixa 1
+Por status: Pendente 1 | Em rota 1 | Concluída 1
+
+=== FilaFácil Logística ===
+1. Cadastrar coleta
+2. Listar coletas
+3. Filtrar por status
+4. Filtrar por prioridade
+5. Atualizar status
+6. Resumo operacional
+0. Sair
+Escolha uma opção: >> Opção inválida. Tente novamente.
+
+=== FilaFácil Logística ===
+1. Cadastrar coleta
+2. Listar coletas
+3. Filtrar por status
+4. Filtrar por prioridade
+5. Atualizar status
+6. Resumo operacional
+0. Sair
+Escolha uma opção: >> Até logo!
+
+--- exit code 0
+
+=== FilaFácil Logística ===
+1. Cadastrar coleta
+2. Listar coletas
+3. Filtrar por status
+4. Filtrar por prioridade
+5. Atualizar status
+6. Resumo operacional
+0. Sair
+Escolha uma opção: ID   | Cliente              | Endereço                       | Pacotes | Prioridade | Status    
+------------------------------------------------------------------------------------------------
+1    | Ana Souza            | Rua A, 10                      |       3 | Alta       | Em rota   
+2    | Bruno Lima           | Av. Central, 500 - Sala 12 - … |       2 | Média      | Concluída 
+3    | Carla Dias           | Rua C, 3                       |       5 | Baixa      | Pendente  
+
+=== FilaFácil Logística ===
+1. Cadastrar coleta
+2. Listar coletas
+3. Filtrar por status
+4. Filtrar por prioridade
+5. Atualizar status
+6. Resumo operacional
+0. Sair
+Escolha uma opção: ===== Resumo operacional =====
+Total de coletas: 3 | Total de pacotes: 10
+Por prioridade: Alta 1 | Média 1 | Baixa 1
+Por status: Pendente 1 | Em rota 1 | Concluída 1
+
+=== FilaFácil Logística ===
+1. Cadastrar coleta
+2. Listar coletas
+3. Filtrar por status
+4. Filtrar por prioridade
+5. Atualizar status
+6. Resumo operacional
+0. Sair
+Escolha uma opção: >> Até logo!
+
+--- exit code 0
+
+=== FilaFácil Logística ===
+1. Cadastrar coleta
+2. Listar coletas
+3. Filtrar por status
+4. Filtrar por prioridade
+5. Atualizar status
+6. Resumo operacional
+0. Sair
+Escolha uma opção: >> Nenhuma coleta encontrada
+
+=== FilaFácil Logística ===
+1. Cadastrar coleta
+2. Listar coletas
+3. Filtrar por status
+4. Filtrar por prioridade
+5. Atualizar status
+6. Resumo operacional
+0. Sair
+Escolha uma opção: >> Até logo!
+
+--- exit code 0
+
+=== FilaFácil Logística ===
+1. Cadastrar coleta
+2. Listar coletas
+3. Filtrar por status
+4. Filtrar por prioridade
+5. Atualizar status
+6. Resumo operacional
+0. Sair
+Escolha uma opção: >> Nenhuma coleta encontrada
+
+=== FilaFácil Logística ===
+1. Cadastrar coleta
+2. Listar coletas
+3. Filtrar por status
+4. Filtrar por prioridade
+5. Atualizar status
+6. Resumo operacional
+0. Sair
+Escolha uma opção: 
+>> Encerrado pelo usuário. Até logo!
