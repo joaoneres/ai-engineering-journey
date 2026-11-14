@@ -65,7 +65,7 @@ jobs:
         run: python -m compileall -q src tests scripts
 
   testes:
-    name: simple-report-pipeline · Testes (py ${{ matrix.python-version }})
+    name: simple-report-pipeline · Testes
     needs: qualidade
     runs-on: ubuntu-24.04
     strategy:
@@ -151,7 +151,7 @@ jobs:
           retention-days: 30
 
   publicar:
-    name: simple-report-pipeline · Publicar (${{ needs.build.outputs.environment }})
+    name: simple-report-pipeline · Publicar
     needs: build
     # Só publica em: tag (prod), main (homolog) ou execução manual (dev em qualquer branch;
     # homolog/prod apenas a partir da main ou de uma tag). Nunca em pull request.
