@@ -6,6 +6,7 @@ Portuguese examples inside the prompt library, which the model imitates).
 
 from ai_assistant.library import Profile
 from ai_assistant.memory import ConversationState
+from ai_assistant.ui_style import PLAIN, Style
 
 PROFILE_LABELS = {
     "customer": "Cliente",
@@ -47,7 +48,7 @@ FIELD_LABELS = {
     "reported_address": "Endereço informado",
 }
 
-MENU_TITLE = "=== FilaFácil · Assistente com IA ==="
+MENU_TITLE = "FilaFácil · Assistente com IA"
 MENU_QUESTION = "Quem é você?"
 MENU_EXIT = "Sair"
 MENU_PROMPT = "Escolha uma opção: "
@@ -57,9 +58,14 @@ PRIVACY_NOTICE = (
     "Aviso: use somente dados fictícios. "
     "Tudo o que você digitar é enviado a um serviço externo de IA."
 )
-CHAT_HEADER = "--- Conversa: {profile} ---  (/resumo  /novo  /sair)"
+CHAT_TITLE = "Conversa: {profile}"
+CHAT_COMMANDS = "Comandos: /resumo  /novo  /sair"
 USER_PROMPT = "Você: "
 ASSISTANT_PREFIX = "IA:   "
+WORKING = "IA está respondendo…"
+ASK_CONTINUE = "Posso ajudar em mais alguma coisa? (s/n): "
+CONTINUE_HINT = "Pode continuar. Use /novo para tratar outro caso."
+YES_ANSWERS = ("s", "sim", "y", "yes")
 NEW_CONVERSATION = "Nova conversa iniciada."
 BACK_TO_MENU = "Voltando ao menu."
 GOODBYE = "Até logo!"
@@ -74,7 +80,7 @@ MISSING_KEY = (
 LOAD_ERROR = "Não foi possível carregar a biblioteca do assistente: {detail}"
 SETTINGS_ERROR = "Configuração inválida: {detail}"
 UNEXPECTED_ERROR = "Ocorreu um erro inesperado ({kind}). A conversa foi encerrada."
-SUMMARY_TITLE = "===== Registro estruturado ====="
+SUMMARY_TITLE = "Registro estruturado"
 SUMMARY_EMPTY = "Ainda não há dados nesta conversa."
 ABSENT = "ausente"
 FINAL_ACTIONS = ("hand_off_to_team", "escalate_to_human", "close")
@@ -84,7 +90,7 @@ def _origin(origin: str) -> str:
     return ORIGIN_LABELS.get(origin, origin)
 
 
-def _field_lines(state: ConversationState, profile: Profile) -> list[str]:
+def _field_lines(state: ConversationState, profile: Profile, style: Style) -> list[str]:
     known = dict(state.fields)
     names = list(profile.required_fields) + [n for n in known if n not in profile.required_fields]
     lines = []
@@ -92,44 +98,52 @@ def _field_lines(state: ConversationState, profile: Profile) -> list[str]:
         label = FIELD_LABELS.get(name, name)
         item = known.get(name)
         if item is not None and item.present:
-            lines.append(f"  - {label}: {item.value} ({_origin(item.origin)})")
+            text = f"{label}: {item.value} ({_origin(item.origin)})"
         else:
-            lines.append(f"  - {label}: {ABSENT}")
+            text = f"{label}: {ABSENT}"
+        lines.append(style.wrap(text, prefix="  - "))
     return lines
 
 
-def _record_lines(record: dict) -> list[str]:
+def _record_lines(record: dict, style: Style) -> list[str]:
     lines = []
     for name, item in record.items():
         value = item["value"] if item["value"] is not None else ABSENT
-        lines.append(f"  - {FIELD_LABELS.get(name, name)}: {value} ({_origin(item['origin'])})")
+        text = f"{FIELD_LABELS.get(name, name)}: {value} ({_origin(item['origin'])})"
+        lines.append(style.wrap(text, prefix="  - "))
     return lines
 
 
-def format_summary(state: ConversationState, profile: Profile) -> str:
+def format_summary(state: ConversationState, profile: Profile, style: Style = PLAIN) -> str:
     """The structured record of the conversation so far, in Portuguese."""
     if not state.fields and not state.extras:
         return SUMMARY_EMPTY
     extras = dict(state.extras)
-    lines = [SUMMARY_TITLE, f"Perfil: {PROFILE_LABELS[profile.id]}"]
+
+    def heading(text: str) -> str:
+        return style.paint(text, "bold")
+
+    lines = [
+        style.paint(style.rule(SUMMARY_TITLE), "cyan"),
+        f"Perfil: {PROFILE_LABELS[profile.id]}",
+    ]
     if state.intent:
         lines.append(f"Intenção: {INTENT_LABELS.get(state.intent, state.intent)}")
-    lines += ["Campos:", *_field_lines(state, profile)]
-    if "summary" in extras:
-        lines.append(f"Resumo: {extras['summary']}")
-    if "internal_note" in extras:
-        note = extras["internal_note"]
-        if note["priority"] is None:
-            lines.append("Nota interna: prioridade não definida")
-        else:
-            priority = PRIORITY_LABELS.get(note["priority"], note["priority"])
-            lines.append(
-                f"Nota interna: prioridade {priority} ({_origin(note['priority_origin'])})"
-            )
-        lines.append(f"  {note['text']}")
-    if "record" in extras:
-        lines += ["Registro padronizado:", *_record_lines(extras["record"])]
     if state.last_next_action:
         label = NEXT_ACTION_LABELS.get(state.last_next_action, state.last_next_action)
         lines.append(f"Próxima ação: {label}")
+    lines += ["", heading("Campos:"), *_field_lines(state, profile, style)]
+    if "summary" in extras:
+        lines += ["", heading("Resumo:"), style.wrap(extras["summary"], prefix="  ")]
+    if "internal_note" in extras:
+        note = extras["internal_note"]
+        if note["priority"] is None:
+            title = "Nota interna: prioridade não definida"
+        else:
+            priority = PRIORITY_LABELS.get(note["priority"], note["priority"])
+            title = f"Nota interna: prioridade {priority} ({_origin(note['priority_origin'])})"
+        lines += ["", heading(title), style.wrap(note["text"], prefix="  ")]
+    if "record" in extras:
+        lines += ["", heading("Registro padronizado:"), *_record_lines(extras["record"], style)]
+    lines.append(style.paint(style.rule(), "cyan"))
     return "\n".join(lines)

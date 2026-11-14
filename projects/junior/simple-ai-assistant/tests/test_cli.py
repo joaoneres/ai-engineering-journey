@@ -5,6 +5,7 @@ from ai_assistant.cli import main
 from ai_assistant.config import Settings
 from ai_assistant.model import ModelError, ScriptedModel
 from ai_assistant.scenarios import load_scenario
+from ai_assistant.ui_style import CLEAR_LINE, Style
 
 
 class Terminal:
@@ -24,17 +25,22 @@ class Terminal:
     def print(self, *parts):
         self.out.append(" ".join(str(part) for part in parts))
 
+    def write(self, text):
+        self.out.append(text)
+
     @property
     def text(self):
         return "\n".join(self.out)
 
 
-def run(lines, argv=(), settings=None, model_factory=None):
-    terminal = Terminal(lines)
+def run(lines, argv=(), settings=None, model_factory=None, style=None, terminal=None):
+    terminal = terminal or Terminal(lines)
     code = main(
         list(argv),
         input_fn=terminal.input,
         print_fn=terminal.print,
+        write_fn=terminal.write,
+        style=style or Style(),
         settings=settings,
         model_factory=model_factory,
     )
@@ -106,14 +112,36 @@ class ChatTests(unittest.TestCase):
 
     def test_the_privacy_notice_is_shown_when_a_conversation_opens(self):
         _, text = self.chat(["/sair"])
-        self.assertIn(ui_text.PRIVACY_NOTICE, text)
+        self.assertIn(" ".join(ui_text.PRIVACY_NOTICE.split()), " ".join(text.split()))
 
-    def test_a_conversation_runs_turn_by_turn_until_it_concludes(self):
-        code, text = self.chat(["meu pacote ABC123 não chegou", "Maria Souza, sim"])
+    def test_a_conversation_runs_turn_by_turn_and_asks_before_closing(self):
+        code, text = self.chat(["meu pacote ABC123 não chegou", "Maria Souza, sim", "n"])
+        flat = " ".join(text.split())
         self.assertEqual(code, 0)
-        self.assertIn("qual é o seu nome?", text)
-        self.assertIn(ui_text.CONCLUDED, text)
-        self.assertIn(ui_text.BACK_TO_MENU, text)
+        self.assertIn("qual é o seu nome?", flat)
+        self.assertIn(ui_text.SUMMARY_TITLE, flat)
+        self.assertIn(ui_text.ASK_CONTINUE.strip(), flat)
+        self.assertIn(ui_text.CONCLUDED, flat)
+        self.assertIn(ui_text.BACK_TO_MENU, flat)
+
+    def test_answering_yes_keeps_the_conversation_open(self):
+        _, text = self.chat(["meu pacote ABC123 não chegou", "Maria Souza, sim", "s", "/sair"])
+        self.assertIn(ui_text.CONTINUE_HINT, text)
+        self.assertNotIn(ui_text.CONCLUDED, text)
+        self.assertEqual(text.count(ui_text.ASK_CONTINUE), 1)
+
+    def test_after_a_yes_a_new_case_can_be_started(self):
+        lines = [
+            "meu pacote ABC123 não chegou",
+            "Maria Souza, sim",
+            "sim",
+            "/novo",
+            "/resumo",
+            "/sair",
+        ]
+        _, text = self.chat(lines)
+        self.assertIn(ui_text.NEW_CONVERSATION, text)
+        self.assertIn(ui_text.SUMMARY_EMPTY, text)
 
     def test_blank_lines_are_ignored(self):
         _, text = self.chat(["", "   ", "/sair"])
@@ -140,6 +168,52 @@ class ChatTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn(ui_text.GOODBYE, text)
         self.assertNotIn("Traceback", text)
+
+
+class ClosingTests(unittest.TestCase):
+    """Escalations and an explicit close end the chat; a plain hand-off asks first."""
+
+    def test_the_driver_escalation_ends_without_asking_to_continue(self):
+        def driver_model(_profile):
+            return load_scenario("driver").scripted_model()
+
+        message = load_scenario("driver").turns[0].user
+        _, text = run(
+            ["4", message, "0"], model_factory=driver_model, settings=Settings(api_key="x")
+        )
+        self.assertIn(ui_text.ESCALATED, text)
+        self.assertNotIn(ui_text.ASK_CONTINUE, text)
+
+    def test_the_demo_never_asks_to_continue(self):
+        _, text = run(["1", "0"], ["--demo"])
+        self.assertNotIn(ui_text.ASK_CONTINUE, text)
+        self.assertIn(ui_text.CONCLUDED, text)
+
+
+class BusyIndicatorTests(unittest.TestCase):
+    def run_one_turn(self, style):
+        terminal = Terminal(["1", "meu pacote ABC123 não chegou", "/sair", "0"])
+        run(
+            [],
+            model_factory=customer_model,
+            settings=Settings(api_key="x"),
+            style=style,
+            terminal=terminal,
+        )
+        return terminal.text
+
+    def test_no_indicator_when_the_output_cannot_be_redrawn(self):
+        self.assertNotIn(ui_text.WORKING, self.run_one_turn(Style(interactive=False)))
+
+    def test_the_indicator_is_shown_and_erased_on_an_interactive_terminal(self):
+        text = self.run_one_turn(Style(color=True, interactive=True, width=80))
+        self.assertIn(ui_text.WORKING, text)
+        self.assertIn(CLEAR_LINE, text)
+        self.assertLess(text.index(ui_text.WORKING), text.index(CLEAR_LINE))
+
+    def test_colours_appear_only_when_the_style_asks_for_them(self):
+        self.assertNotIn("\033[", self.run_one_turn(Style(color=False)))
+        self.assertIn("\033[", self.run_one_turn(Style(color=True, interactive=True)))
 
 
 class SummaryFormatTests(unittest.TestCase):
