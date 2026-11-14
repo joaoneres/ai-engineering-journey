@@ -1,0 +1,151 @@
+# Pipeline do projeto: projects/junior/simple-report-pipeline
+# Este workflow mora na raiz do repositório porque o GitHub só executa arquivos desta pasta.
+# Documentação: projects/junior/simple-report-pipeline/PIPELINE.md e README.md
+name: simple-report-pipeline
+
+on:
+  push:
+    branches: [main, "feature/**", "fix/**", "chore/**", "docs/**", "ci/**"]
+    tags: ["simple-report-v*.*.*"]
+    paths:
+      - "projects/junior/simple-report-pipeline/**"
+      - ".github/workflows/simple-report-pipeline.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "projects/junior/simple-report-pipeline/**"
+      - ".github/workflows/simple-report-pipeline.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Ambiente de destino"
+        type: choice
+        options: [dev, homolog, prod]
+        default: dev
+
+# Menor privilégio: só leitura por padrão; jobs que precisarem de mais declaram o próprio escopo.
+permissions:
+  contents: read
+
+env:
+  PROJECT_NAME: simple-report-pipeline
+  PROJECT_DIR: projects/junior/simple-report-pipeline
+  ARTIFACT_DIR: dist
+
+defaults:
+  run:
+    working-directory: projects/junior/simple-report-pipeline
+
+concurrency:
+  group: simple-report-pipeline-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  qualidade:
+    name: simple-report-pipeline · Qualidade
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: projects/junior/simple-report-pipeline/requirements-dev.txt
+      - name: Instalar dependências
+        run: python -m pip install -r requirements-dev.txt
+      - name: Checar formatação (ruff format)
+        run: python -m ruff format --check .
+      - name: Lint (ruff check)
+        run: python -m ruff check .
+      - name: Análise estática (compileall)
+        run: python -m compileall -q src tests scripts
+
+  testes:
+    name: simple-report-pipeline · Testes (py ${{ matrix.python-version }})
+    needs: qualidade
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.13"]
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Configurar Python ${{ matrix.python-version }}
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Instalar o pacote
+        run: python -m pip install -e .
+      - name: Testes unitários
+        run: python -m unittest discover -s tests -t . -v
+      - name: Rodar a CLI de ponta a ponta
+        run: simple-report samples/pickups.json
+
+  build:
+    name: simple-report-pipeline · Build
+    needs: testes
+    runs-on: ubuntu-24.04
+    outputs:
+      environment: ${{ steps.contexto.outputs.environment }}
+      version: ${{ steps.contexto.outputs.version }}
+      artifact_name: ${{ steps.contexto.outputs.artifact_name }}
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: projects/junior/simple-report-pipeline/requirements-dev.txt
+      - name: Instalar dependências
+        run: python -m pip install -r requirements-dev.txt
+      - name: Resolver ambiente e versão
+        id: contexto
+        env:
+          INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then environment=prod
+          elif [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then environment="$INPUT_ENVIRONMENT"
+          elif [ "$GITHUB_REF" = "refs/heads/main" ]; then environment=homolog
+          else environment=dev; fi
+          version=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          cat "config/${environment}.env" >> "$GITHUB_ENV"
+          {
+            echo "environment=${environment}"
+            echo "version=${version}"
+            echo "artifact_name=dist-${version}-${GITHUB_SHA::7}"
+          } >> "$GITHUB_OUTPUT"
+          echo "Ambiente: ${environment} | versão: ${version}"
+      - name: Checar versão (e tag, quando houver)
+        run: python scripts/check_version.py
+      - name: Build (wheel + sdist)
+        run: python -m build
+      - name: Validar metadados (twine check)
+        run: python -m twine check --strict dist/*
+      - name: Gerar manifest.json
+        run: python scripts/build_manifest.py --environment "${{ steps.contexto.outputs.environment }}"
+      - name: Resumo do artefato
+        run: |
+          {
+            echo "### Artefato construído"
+            echo '```json'
+            cat dist/manifest.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Guardar o artefato
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.contexto.outputs.artifact_name }}
+          path: ${{ env.PROJECT_DIR }}/${{ env.ARTIFACT_DIR }}/
+          if-no-files-found: error
+          retention-days: 30
