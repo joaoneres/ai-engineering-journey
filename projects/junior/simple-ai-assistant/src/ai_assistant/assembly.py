@@ -32,6 +32,9 @@ RESPOND_BASE_FORMAT = (
 )
 
 CONVERSATION_RULES = (
+    "This rule comes first and overrides all the others: if memory.intent is human_escalation, "
+    "set next_action to escalate_to_human and asking to an empty list, even when memory.missing "
+    "is not empty. Do not ask for anything; say that a person will take over the case.",
     "Read memory.missing. If it is not empty, ask ONE short question, in Brazilian Portuguese, "
     "that covers ALL those fields, ending with a question mark. Set next_action to "
     "ask_missing_information and list those field names in asking. Otherwise asking must be an "
@@ -86,12 +89,12 @@ def _task_section(task: Prompt) -> list[str]:
     return lines
 
 
-def _required_fields_lines(profile: Profile) -> list[str]:
-    """The required fields, each with its meaning when the profile describes it."""
+def _fields_lines(names: tuple[str, ...], profile: Profile) -> list[str]:
+    """Fields, each with its meaning when the profile describes it."""
     help_by_field = dict(profile.field_help)
     if not help_by_field:
-        return [", ".join(profile.required_fields)]
-    return [f"- {name}: {help_by_field[name]}" for name in profile.required_fields]
+        return [", ".join(names)]
+    return [f"- {name}: {help_by_field[name]}" for name in names]
 
 
 def build_system(library: Library, profile: Profile, stage: str) -> str:
@@ -99,7 +102,10 @@ def build_system(library: Library, profile: Profile, stage: str) -> str:
     vocabulary = library.vocabulary
     lines = ["# Role", profile.role, "", "# Global rules"]
     lines += [f"{number}. {rule}" for number, rule in enumerate(library.rules, start=1)]
-    lines += ["", "# Required fields", *_required_fields_lines(profile)]
+    lines += ["", "# Required fields", *_fields_lines(profile.required_fields, profile)]
+    if profile.optional_fields:
+        lines += ["", "# Optional fields (extract them when present; never ask for them)"]
+        lines += _fields_lines(profile.optional_fields, profile)
     if stage == UNDERSTAND:
         lines += ["", "# Allowed intents"]
         lines += [

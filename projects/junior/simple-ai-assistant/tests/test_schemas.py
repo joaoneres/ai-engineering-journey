@@ -147,6 +147,33 @@ class RespondSchemaTests(unittest.TestCase):
         errors = respond_errors(answer, LIBRARY, CUSTOMER)
         self.assertTrue(any("output.asking[0]" in error for error in errors))
 
+    def test_optional_fields_are_extracted_but_never_asked(self):
+        driver = LIBRARY.profiles["driver"]
+        understand = {
+            "intent": "address",
+            "fields": {
+                "code": field("ABC123", "ABC123", "informed"),
+                "problem": field("cão bravo", "cão bravo", "informed"),
+                "reported_address": field(None, None, "absent"),
+            },
+        }
+        self.assertEqual(understand_errors(understand, LIBRARY, driver), [])
+        respond = {
+            "speech": "Qual é o endereço?",
+            "facts": [],
+            "asking": ["reported_address"],
+            "next_action": "ask_missing_information",
+            "record": {
+                "code": {"value": "ABC123", "origin": "informed"},
+                "problem": {"value": "cão bravo", "origin": "informed"},
+                "reported_address": {"value": None, "origin": "absent"},
+            },
+        }
+        errors = respond_errors(respond, LIBRARY, driver)
+        self.assertTrue(any("output.asking[0]" in error for error in errors))
+        respond["asking"] = []
+        self.assertEqual(respond_errors(respond, LIBRARY, driver), [])
+
     def test_asking_is_a_required_key(self):
         answer = copy.deepcopy(RESPOND_OK)
         del answer["asking"]

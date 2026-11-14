@@ -97,7 +97,8 @@ def _origin(origin: str) -> str:
 
 def _field_lines(state: ConversationState, profile: Profile, style: Style) -> list[str]:
     known = dict(state.fields)
-    names = list(profile.required_fields) + [n for n in known if n not in profile.required_fields]
+    listed = (*profile.required_fields, *profile.optional_fields)
+    names = list(listed) + [n for n in known if n not in listed]
     lines = []
     for name in names:
         label = FIELD_LABELS.get(name, name)

@@ -28,7 +28,10 @@ def customer_respond(**overrides):
             "Localizei o pacote ABC123: está em rota, com previsão de entrega para 20/11/2026. "
             "Qual é o seu nome?"
         ),
-        "facts": [{"field": "deadline", "value": "2026-11-20", "origin": "base"}],
+        "facts": [
+            {"field": "status", "value": "in_transit", "origin": "base"},
+            {"field": "deadline", "value": "2026-11-20", "origin": "base"},
+        ],
         "asking": ["customer_name"],
         "next_action": "ask_missing_information",
         "internal_note": {
@@ -384,6 +387,92 @@ class RecordClaimFlowTests(unittest.TestCase):
         self.assertIn("does not hand the case over", model.calls[2][1])
 
 
+class OptionalFieldFlowTests(unittest.TestCase):
+    PROBLEM = "tem um cachorro bravo no portão e não consigo entregar"
+    DOG = f"{PROBLEM} o JKL654"
+
+    def driver_answers(self, action="escalate_to_human"):
+        understand = {
+            "intent": "address",
+            "fields": {
+                "code": item("JKL654", "JKL654"),
+                "problem": item(self.PROBLEM, self.PROBLEM),
+                "reported_address": ABSENT,
+            },
+        }
+        respond = {
+            "speech": (
+                "O endereço cadastrado é Alameda Sul, 9. Não vou alterar o endereço: "
+                "uma pessoa vai cuidar do caso."
+            ),
+            "facts": [{"field": "address", "value": "Alameda Sul, 9", "origin": "base"}],
+            "asking": [],
+            "next_action": action,
+            "record": {
+                "code": {"value": "JKL654", "origin": "informed"},
+                "problem": {
+                    "value": "tem um cachorro bravo no portão e não consigo entregar",
+                    "origin": "informed",
+                },
+                "reported_address": {"value": None, "origin": "absent"},
+            },
+        }
+        return understand, respond
+
+    def test_a_driver_problem_without_an_address_concludes_without_asking_for_it(self):
+        understand, respond = self.driver_answers()
+        _, _, result = run("driver", self.DOG, [understand, respond])
+        self.assertIsNone(result.failure)
+        self.assertTrue(result.escalated)
+        self.assertEqual(result.state.asked, ())
+
+    def test_asking_for_the_optional_address_is_refused(self):
+        understand, respond = self.driver_answers()
+        asks = {
+            **respond,
+            "next_action": "ask_missing_information",
+            "asking": ["reported_address"],
+            "speech": "Qual é o endereço correto?",
+        }
+        _, model, result = run("driver", self.DOG, [understand, asks, respond])
+        self.assertIsNone(result.failure)
+        self.assertIn("output.asking", model.calls[2][1])
+
+
+class MustStateFlowTests(unittest.TestCase):
+    def test_the_customer_must_get_status_and_deadline_even_while_the_name_is_missing(self):
+        only_the_name = customer_respond(
+            speech="Para consultar a entrega ABC123, qual é o seu nome?", facts=[]
+        )
+        answers = [customer_understand(), only_the_name, customer_respond()]
+        _, model, result = run("customer", "meu pacote ABC123", answers)
+        self.assertIsNone(result.failure)
+        self.assertIn("must state the deadline", model.calls[2][1])
+        self.assertIn("also tell the user the status", model.calls[2][1])
+
+    def test_the_partner_must_say_which_status_the_system_shows(self):
+        scenario = load_scenario("partner")
+        understand, respond = scenario.turns[0].model
+        silent = {**respond, "facts": [{"field": "code", "value": "DEF456", "origin": "informed"}]}
+        _, model, result = run("partner", scenario.turns[0].user, [understand, silent, respond])
+        self.assertIsNone(result.failure)
+        self.assertIn("also tell the user the status", model.calls[2][1])
+
+
+class InternalCodeFlowTests(unittest.TestCase):
+    def test_the_partner_is_not_shown_the_internal_status_code(self):
+        scenario = load_scenario("partner")
+        flow = Flow(LIBRARY, scenario.scripted_model(), DELIVERIES)
+        first = flow.turn(flow.start("partner"), scenario.turns[0].user)
+        understand, respond = scenario.turns[1].model
+        raw = {**respond, "speech": "Entendi. No sistema o pacote DEF456 consta como in_transit."}
+        _, model, result = run(
+            "partner", scenario.turns[1].user, [understand, raw, respond], first.state
+        )
+        self.assertIsNone(result.failure)
+        self.assertIn("internal code", model.calls[2][1])
+
+
 class EscalationTests(unittest.TestCase):
     def test_after_three_rejected_answers_the_turn_escalates_to_a_person(self):
         wrong = customer_respond(speech="Seu pacote ABC123 chega em 22/11/2026. Qual é o seu nome?")
@@ -436,10 +525,12 @@ class AskLimitTests(unittest.TestCase):
         },
     }
 
+    STATUS_FACT = [{"field": "status", "value": "in_transit", "origin": "base"}]
+
     def ask(self, speech="Qual foi a data e a hora da entrega?"):
         return {
             "speech": speech,
-            "facts": [],
+            "facts": self.STATUS_FACT,
             "asking": ["moment"],
             "next_action": "ask_missing_information",
         }
@@ -447,7 +538,7 @@ class AskLimitTests(unittest.TestCase):
     def conclude(self):
         return {
             "speech": "Tudo bem, vou deixar a data e a hora da entrega como desconhecidas.",
-            "facts": [],
+            "facts": self.STATUS_FACT,
             "asking": [],
             "next_action": "hand_off_to_team",
         }
@@ -553,7 +644,7 @@ class ProfileRulesInTheFlowTests(unittest.TestCase):
         }
         _, model, result = run("driver", scenario.turns[0].user, [understand, without, respond])
         self.assertIsNone(result.failure)
-        self.assertIn("must state the registered address", model.calls[2][1])
+        self.assertIn("must state the address", model.calls[2][1])
 
     def test_the_partner_cannot_be_told_the_customer_name_or_address(self):
         scenario = load_scenario("partner")

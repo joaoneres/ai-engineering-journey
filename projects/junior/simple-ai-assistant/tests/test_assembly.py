@@ -46,6 +46,22 @@ class SystemPromptTests(unittest.TestCase):
         self.assertIn("- reported_address:", prompt)
         self.assertIn("REAL one at the location (not the registered address)", prompt)
 
+    def test_optional_fields_are_listed_apart_and_marked_as_never_asked(self):
+        driver = LIBRARY.profiles["driver"]
+        prompt = assembly.build_system(LIBRARY, driver, assembly.UNDERSTAND)
+        required, optional = prompt.split("# Optional fields")
+        self.assertIn("- problem:", required)
+        self.assertNotIn("- reported_address:", required.split("# Required fields")[1])
+        self.assertIn("never ask for them", prompt)
+        self.assertIn("- reported_address:", optional)
+        no_optional = assembly.build_system(LIBRARY, CUSTOMER, assembly.UNDERSTAND)
+        self.assertNotIn("# Optional fields", no_optional)
+
+    def test_the_rules_tell_the_model_to_write_statuses_in_portuguese(self):
+        prompt = assembly.build_system(LIBRARY, CUSTOMER, assembly.RESPOND)
+        self.assertIn("em trânsito", prompt)
+        self.assertIn("Never write the internal codes", prompt)
+
     def test_the_rules_explain_unknown_fields_and_the_single_hand_off(self):
         prompt = assembly.build_system(LIBRARY, CUSTOMER, assembly.RESPOND)
         self.assertIn("memory.unknown", prompt)

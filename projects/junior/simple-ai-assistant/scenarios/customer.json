@@ -65,12 +65,22 @@
           }
         },
         {
-          "speech": "Obrigada, Maria. Preparei o aviso de atraso do pacote ABC123 para a equipe, que vai acompanhar o caso.",
+          "speech": "Obrigada, Maria. Preparei o aviso de atraso do pacote ABC123 para a equipe: ele está em rota, com previsão de entrega para 20/11/2026.",
           "facts": [
             {
               "field": "code",
               "value": "ABC123",
               "origin": "informed"
+            },
+            {
+              "field": "status",
+              "value": "in_transit",
+              "origin": "base"
+            },
+            {
+              "field": "deadline",
+              "value": "2026-11-20",
+              "origin": "base"
             }
           ],
           "asking": [],

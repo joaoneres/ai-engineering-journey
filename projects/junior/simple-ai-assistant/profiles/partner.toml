@@ -1,9 +1,10 @@
 id = "partner"
-role = "You receive status updates from partner carriers of FilaFácil Logística. Find out which required fields are missing and ask only for those, one clear question at a time."
+role = "You receive status updates from partner carriers of FilaFácil Logística. Find out which required fields are missing and ask only for those, one clear question at a time. If the status the partner reports differs from the status in the source record, say so clearly, naming the status shown in the system."
 intents = ["delivery", "human_escalation"]
 required_fields = ["code", "status", "moment"]
 tasks = ["classification", "extraction"]
 hidden_fields = ["customer", "address"]
+must_state = ["status"]
 
 [field_help]
 code = "tracking code of the delivery, such as DEF456"

@@ -69,6 +69,10 @@ class MemoryTests(unittest.TestCase):
         self.assertEqual(memory.escalated(state).last_next_action, "escalate_to_human")
         self.assertTrue(memory.escalated(state).escalated)
 
+    def test_only_the_required_fields_can_be_missing(self):
+        state = memory.with_understanding(self.state, "address", {"problem": item("x", "x")})
+        self.assertEqual(memory.missing_fields(state, ("code", "problem")), ("code",))
+
     def test_missing_fields_are_the_required_ones_without_a_value(self):
         state = memory.with_understanding(
             self.state, "delivery", {"code": item("ABC123", "ABC123"), "customer_name": ABSENT}

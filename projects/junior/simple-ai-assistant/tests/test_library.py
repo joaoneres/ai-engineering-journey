@@ -52,15 +52,23 @@ class LibraryLoadTests(unittest.TestCase):
         for profile_id in ("operator", "driver"):
             self.assertEqual(self.library.profiles[profile_id].hidden_fields, ())
 
-    def test_the_driver_must_mention_the_registered_address(self):
-        self.assertEqual(self.library.profiles["driver"].must_mention, ("address",))
-        self.assertEqual(self.library.profiles["customer"].must_mention, ())
+    def test_profiles_say_what_their_reply_must_contain(self):
+        profiles = self.library.profiles
+        self.assertEqual(profiles["driver"].must_mention, ("address",))
+        self.assertEqual(profiles["customer"].must_mention, ("deadline",))
+        self.assertEqual(profiles["customer"].must_state, ("status", "deadline"))
+        self.assertEqual(profiles["partner"].must_state, ("status",))
+        self.assertEqual(profiles["operator"].must_state, ())
+
+    def test_the_driver_reported_address_is_optional_so_it_is_never_asked(self):
+        driver = self.library.profiles["driver"]
+        self.assertEqual(driver.required_fields, ("code", "problem"))
+        self.assertEqual(driver.optional_fields, ("reported_address",))
 
     def test_every_profile_describes_each_required_field(self):
         for profile in self.library.profiles.values():
-            self.assertEqual(
-                [name for name, _ in profile.field_help], list(profile.required_fields)
-            )
+            described = [name for name, _ in profile.field_help]
+            self.assertEqual(described, [*profile.required_fields, *profile.optional_fields])
 
     def test_only_the_driver_must_always_conclude_by_escalating(self):
         self.assertEqual(self.library.profiles["driver"].conclude_with, "escalate_to_human")
@@ -108,8 +116,8 @@ class LibraryValidationTests(unittest.TestCase):
         self.assertRefused("classification.toml", "objective")
 
     def test_refuses_a_prompt_missing_an_example_type(self):
-        self.edit("prompts/classification.toml", 'type = "escalation"', 'type = "positive"')
-        self.assertRefused("classification.toml", "escalation")
+        self.edit("prompts/summarization.toml", 'type = "escalation"', 'type = "positive"')
+        self.assertRefused("summarization.toml", "escalation")
 
     def test_refuses_an_example_with_invalid_json(self):
         self.edit(
@@ -160,6 +168,14 @@ class LibraryValidationTests(unittest.TestCase):
     def test_refuses_field_help_for_a_field_that_is_not_required(self):
         self.edit("profiles/customer.toml", "[field_help]\n", '[field_help]\ncolour = "red"\n')
         self.assertRefused("customer.toml", "field_help")
+
+    def test_refuses_a_field_that_is_both_required_and_optional(self):
+        self.edit(
+            "profiles/driver.toml",
+            'optional_fields = ["reported_address"]',
+            'optional_fields = ["code"]',
+        )
+        self.assertRefused("driver.toml", "both required and optional")
 
     def test_refuses_a_profile_with_an_unknown_task(self):
         self.edit("profiles/driver.toml", '"text_transformation"', '"magic"')

@@ -70,6 +70,8 @@ class Profile:
     hidden_fields: tuple[str, ...] = ()
     conclude_with: str | None = None
     must_mention: tuple[str, ...] = ()
+    must_state: tuple[str, ...] = ()
+    optional_fields: tuple[str, ...] = ()
     field_help: tuple[tuple[str, str], ...] = ()
 
 
@@ -220,7 +222,7 @@ def _conclusion(data: dict, vocabulary: Vocabulary, where: str) -> str | None:
 def _field_help(
     data: dict, required_fields: tuple[str, ...], where: str
 ) -> tuple[tuple[str, str], ...]:
-    """What each required field means. Optional, but when present it must cover every field."""
+    """What each field means. Optional, but when present it must cover every field."""
     raw = data.get("field_help")
     if raw is None:
         return ()
@@ -260,6 +262,12 @@ def _load_profile(path: Path, prompts: dict[str, Prompt], vocabulary: Vocabulary
     if missing_core:
         raise LibraryError(f"{where}: tasks must include {missing_core}")
     required_fields = _text_list(data, "required_fields", where)
+    optional_fields = (
+        _text_list(data, "optional_fields", where) if "optional_fields" in data else ()
+    )
+    overlap = [name for name in optional_fields if name in required_fields]
+    if overlap:
+        raise LibraryError(f"{where}: fields cannot be both required and optional: {overlap}")
     return Profile(
         id=profile_id,
         role=_text(data, "role", where),
@@ -269,7 +277,9 @@ def _load_profile(path: Path, prompts: dict[str, Prompt], vocabulary: Vocabulary
         hidden_fields=_text_list(data, "hidden_fields", where) if "hidden_fields" in data else (),
         conclude_with=_conclusion(data, vocabulary, where),
         must_mention=_text_list(data, "must_mention", where) if "must_mention" in data else (),
-        field_help=_field_help(data, required_fields, where),
+        must_state=_text_list(data, "must_state", where) if "must_state" in data else (),
+        optional_fields=optional_fields,
+        field_help=_field_help(data, (*required_fields, *optional_fields), where),
     )
 
 

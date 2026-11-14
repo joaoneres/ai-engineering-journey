@@ -26,7 +26,7 @@
           }
         },
         {
-          "speech": "Entendi: o pacote DEF456 consta como entregue na sua atualização. Para completar a atualização, qual foi a data e a hora da entrega?",
+          "speech": "Entendi: o pacote DEF456 consta como entregue na sua atualização, mas no sistema ele ainda está em rota. Para completar a atualização, qual foi a data e a hora da entrega?",
           "facts": [
             {
               "field": "code",
@@ -37,6 +37,11 @@
               "field": "status",
               "value": "entregue",
               "origin": "informed"
+            },
+            {
+              "field": "status",
+              "value": "in_transit",
+              "origin": "base"
             }
           ],
           "asking": [

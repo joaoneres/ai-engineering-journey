@@ -8,12 +8,14 @@ from ai_assistant.rubrics import (
     check_entities,
     check_facts,
     check_false_actions,
+    check_internal_codes,
     check_internal_note,
     check_mentions,
     check_next_action,
     check_record,
     check_record_claim,
     check_respond,
+    check_states,
     check_understand,
 )
 
@@ -191,7 +193,13 @@ class MentionTests(unittest.TestCase):
             check_mentions("Endereço cadastrado: Rua das Flores, 123.", ev, ("address",)), []
         )
         errors = check_mentions("Preparei o registro.", ev, ("address",))
-        self.assertTrue(any("registered address" in error for error in errors))
+        self.assertTrue(any("must state the address" in error for error in errors))
+
+    def test_a_date_can_be_written_in_any_of_the_usual_formats(self):
+        ev = evidence(source=SOURCE)
+        for text in ("prazo 20/11/2026", "prazo 20/11", "prazo 2026-11-20"):
+            self.assertEqual(check_mentions(text, ev, ("deadline",)), [], text)
+        self.assertTrue(check_mentions("prazo 21/11/2026", ev, ("deadline",)))
 
     def test_nothing_is_required_without_a_source_or_without_fields(self):
         self.assertEqual(check_mentions("x", evidence(), ("address",)), [])
@@ -257,6 +265,62 @@ class FalseActionTests(unittest.TestCase):
 
     def test_preparing_a_record_is_fine(self):
         self.assertEqual(check_false_actions("Preparei um registro para a equipe.", "speech"), [])
+
+
+class InternalCodeTests(unittest.TestCase):
+    CODES = ("pending", "in_transit", "completed")
+
+    def test_internal_status_codes_cannot_reach_the_user(self):
+        errors = check_internal_codes("No sistema consta como in_transit.", self.CODES, "speech")
+        self.assertTrue(any("internal code" in error for error in errors))
+
+    def test_the_portuguese_labels_are_fine(self):
+        text = "O pacote está em trânsito; outro está pendente; outro, concluída."
+        self.assertEqual(check_internal_codes(text, self.CODES, "speech"), [])
+
+    def test_a_code_inside_another_word_is_not_a_match(self):
+        self.assertEqual(check_internal_codes("uncompleted pending_x", self.CODES, "speech"), [])
+
+    def test_check_respond_applies_it_to_the_speech_and_the_note(self):
+        output = {
+            "speech": "O status é in_transit.",
+            "facts": [],
+            "asking": [],
+            "next_action": "provide_information",
+            "internal_note": {
+                "priority": None,
+                "priority_origin": "absent",
+                "text": "Está completed.",
+            },
+        }
+        errors = check_respond(
+            output, evidence(), intent="delivery", missing=(), status_codes=self.CODES
+        )
+        self.assertTrue(
+            any(error.startswith("speech:") and "internal code" in error for error in errors)
+        )
+        self.assertTrue(any(error.startswith("internal_note.text:") for error in errors))
+
+
+class StateTests(unittest.TestCase):
+    def facts(self, *fields):
+        return [{"field": f, "value": SOURCE[f], "origin": "base"} for f in fields]
+
+    def test_the_listed_source_fields_must_appear_as_base_facts(self):
+        ev = evidence(source=SOURCE)
+        self.assertEqual(
+            check_states(self.facts("status", "deadline"), ev, ("status", "deadline")), []
+        )
+        errors = check_states(self.facts("deadline"), ev, ("status", "deadline"))
+        self.assertEqual(len(errors), 1)
+        self.assertIn("status", errors[0])
+
+    def test_an_informed_fact_does_not_count_as_stating_the_source_value(self):
+        facts = [{"field": "status", "value": "entregue", "origin": "informed"}]
+        self.assertTrue(check_states(facts, evidence(source=SOURCE), ("status",)))
+
+    def test_nothing_is_required_when_the_delivery_was_not_found(self):
+        self.assertEqual(check_states([], evidence(), ("status", "deadline")), [])
 
 
 class RecordClaimTests(unittest.TestCase):

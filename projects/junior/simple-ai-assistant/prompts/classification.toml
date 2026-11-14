@@ -10,6 +10,7 @@ The intents allowed in this conversation are listed in the section "Allowed inte
 constraints = [
   "Choose exactly one intent, and only from the allowed intents or \"unclear\".",
   "Use \"human_escalation\" when the user asks to talk to a person or when the message is outside what this assistant may handle.",
+  "Use \"human_escalation\" also for any risk to people: threats, violence, injuries, accidents with victims or theft. A person must handle these, even if the message reads like an ordinary occurrence.",
   "Use \"unclear\" when the message is too vague to decide. Never guess the intent.",
   "Do not use any information that is not in the message or in the conversation memory.",
 ]
@@ -40,4 +41,10 @@ output = '''{"intent": "unclear"}'''
 [[examples]]
 type = "escalation"
 input = "quero falar com um atendente agora"
+output = '''{"intent": "human_escalation"}'''
+
+[[examples]]
+type = "escalation"
+input = "o motorista foi ameaçado no ponto de entrega, a polícia está a caminho"
+note = "Safety incident: a person must handle it, even for a profile that normally registers occurrences."
 output = '''{"intent": "human_escalation"}'''

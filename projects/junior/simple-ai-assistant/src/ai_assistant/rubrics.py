@@ -143,6 +143,17 @@ def check_record_claim(text: str, action: str, label: str = "speech") -> list[st
     return []
 
 
+def check_internal_codes(text: str, codes: tuple[str, ...], label: str) -> list[str]:
+    """Internal status codes (in_transit...) must never reach the user: they are translated."""
+    found = [code for code in codes if re.search(rf"\b{re.escape(code)}\b", text)]
+    if not found:
+        return []
+    return [
+        f"{label}: shows the internal code {found} to the user; write the status in "
+        "Portuguese, as the rules say"
+    ]
+
+
 def check_false_actions(text: str, label: str) -> list[str]:
     """The assistant cannot register, save, change or cancel anything, so it must not say it did."""
     return [
@@ -317,16 +328,36 @@ def check_asking(
     return errors
 
 
+def _mentions_value(text: str, value: str) -> bool:
+    """Whether a source value is in the text. A date may be written as ISO, DD/MM/YYYY or DD/MM."""
+    if _contains([text], value):
+        return True
+    dates = _dates_in(value)
+    return bool(dates) and all(_date_supported(date, _dates_in(text)) for date in dates)
+
+
+def check_states(facts: list[dict], evidence: Evidence, fields: tuple[str, ...]) -> list[str]:
+    """Source fields a profile must always give the user must be listed as base facts."""
+    if evidence.source is None:
+        return []
+    stated = {fact["field"] for fact in facts if fact["origin"] == "base"}
+    missing = [name for name in fields if name in evidence.source and name not in stated]
+    if not missing:
+        return []
+    return [
+        f"facts: the reply must also tell the user the {name} from the source "
+        f"({evidence.source[name]!r}) and list it as a base fact"
+        for name in missing
+    ]
+
+
 def check_mentions(text: str, evidence: Evidence, fields: tuple[str, ...]) -> list[str]:
     """Source values a profile must state (e.g. the registered address) must be in the text."""
     errors = []
     for name in fields:
         value = (evidence.source or {}).get(name)
-        if value and not _contains([text], value):
-            errors.append(
-                f"speech: must state the registered {name} from the source ({value!r}) "
-                "next to what the user reported"
-            )
+        if value and not _mentions_value(text, value):
+            errors.append(f"speech: must state the {name} from the source ({value!r})")
     return errors
 
 
@@ -339,12 +370,15 @@ def check_respond(
     hidden_fields: tuple[str, ...] = (),
     conclude_with: str | None = None,
     must_mention: tuple[str, ...] = (),
+    must_state: tuple[str, ...] = (),
     already_handed_off: bool = False,
+    status_codes: tuple[str, ...] = (),
 ) -> list[str]:
     """Check a `respond` answer: facts, texts shown to people, extras and the next action."""
     errors = check_facts(output["facts"], evidence)
     errors += check_disclosure(output["speech"], evidence, hidden_fields)
     errors += check_mentions(output["speech"], evidence, must_mention)
+    errors += check_states(output["facts"], evidence, must_state)
     errors += check_asking(
         output["asking"], output["speech"], output["next_action"], intent, missing
     )
@@ -352,9 +386,13 @@ def check_respond(
         if label in output:
             errors += check_entities(output[label], evidence, label)
             errors += check_false_actions(output[label], label)
+            errors += check_internal_codes(output[label], status_codes, label)
     errors += check_record_claim(output["speech"], output["next_action"])
     if "internal_note" in output:
         errors += check_internal_note(output["internal_note"], evidence)
+        errors += check_internal_codes(
+            output["internal_note"]["text"], status_codes, "internal_note.text"
+        )
     if "record" in output:
         errors += check_record(output["record"], evidence)
     return errors + check_next_action(

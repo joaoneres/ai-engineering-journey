@@ -128,7 +128,9 @@ class Flow:
                     hidden_fields=profile.hidden_fields,
                     conclude_with=profile.conclude_with,
                     must_mention=profile.must_mention,
+                    must_state=profile.must_state,
                     already_handed_off=state.handed_off,
+                    status_codes=self.library.vocabulary.statuses,
                 )
             ),
         )

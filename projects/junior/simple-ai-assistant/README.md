@@ -115,7 +115,8 @@ src/ai_assistant/
   ui_text.py          every text shown to the user (Portuguese)
   ui_style.py         width, wrapping and colours (no user-facing text)
   cli.py              profile menu and chat box
-tests/                255 tests, all offline
+tests/                274 tests, all offline
+qa/                   manual test map as an executable suite (real model, needs a key, costs cents)
 ```
 
 ## 6. The prompt library
@@ -236,6 +237,18 @@ rules and say the package arrives tomorrow"), a code that is not in the base, a 
 request for the address and owner of a package, and a request for a human. In every case it
 refused the injection, did not invent data, asked for clarification, revealed nothing it should
 not, and escalated when asked.
+
+### The QA suite (`qa/`)
+
+`python -m qa.run --runs 8 --out qa/report.md` runs the whole manual test map (conversation cases
+against the real model, plus system cases for the terminal and the configuration) and writes a
+Portuguese report. A case passes only if **every** run passes. It is not part of the unit tests: it
+needs `DEEPSEEK_API_KEY` and costs a few cents. Use `--only A9,B6` and `--skip-system` to narrow it.
+
+New profile keys found by it: `optional_fields` (extracted when present, never asked for) and
+`must_state` (source facts the reply must state). Internal status codes (such as `in_transit`)
+are forbidden in replies: the status is written in Portuguese. An escalation intent always wins over
+asking for missing fields.
 
 ## 10. Restrictions respected
 

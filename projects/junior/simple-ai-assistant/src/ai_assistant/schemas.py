@@ -102,7 +102,11 @@ def parse_json(text: object) -> tuple[dict | None, list[str]]:
 
 
 def _output_spec(
-    name: str, vocabulary: Vocabulary, intents: tuple[str, ...], field_names: tuple[str, ...]
+    name: str,
+    vocabulary: Vocabulary,
+    intents: tuple[str, ...],
+    field_names: tuple[str, ...],
+    asking_names: tuple[str, ...] | None = None,
 ) -> dict:
     """Spec of one top-level key of a stage output."""
     field_item = _object(
@@ -131,7 +135,7 @@ def _output_spec(
                 }
             )
         ),
-        "asking": _list(_enum(field_names)),
+        "asking": _list(_enum(field_names if asking_names is None else asking_names)),
         "next_action": _enum(vocabulary.next_actions),
     }
     if name not in specs:
@@ -149,8 +153,9 @@ def stage_keys(library: Library, profile: Profile, stage: str) -> tuple[str, ...
 
 def _stage_errors(output: object, library: Library, profile: Profile, stage: str) -> list[str]:
     intents = (*profile.intents, UNCLEAR_INTENT)
+    all_fields = (*profile.required_fields, *profile.optional_fields)
     keys = {
-        name: _output_spec(name, library.vocabulary, intents, profile.required_fields)
+        name: _output_spec(name, library.vocabulary, intents, all_fields, profile.required_fields)
         for name in stage_keys(library, profile, stage)
     }
     return validate(output, _object(keys), "output")
