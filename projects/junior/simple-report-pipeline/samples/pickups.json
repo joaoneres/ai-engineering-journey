@@ -1,0 +1,6 @@
+[
+  {"id": 1, "customer_name": "Maria Souza", "address": "Rua das Flores, 123", "package_count": 3, "priority": "high", "status": "pending"},
+  {"id": 2, "customer_name": "João Lima", "address": "Av. Brasil, 45", "package_count": 10, "priority": "low", "status": "in_transit"},
+  {"id": 3, "customer_name": "Carla Dias", "address": "Rua C, 3", "package_count": 5, "priority": "medium", "status": "completed"},
+  {"id": 4, "customer_name": "Bruno Lima", "address": "Av. Central, 500", "package_count": 2, "priority": "high", "status": "pending"}
+]
