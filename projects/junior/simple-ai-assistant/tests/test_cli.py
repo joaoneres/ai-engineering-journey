@@ -241,6 +241,25 @@ class SummaryFormatTests(unittest.TestCase):
         self.assertNotIn("(ausente)", text)
 
 
+class UnknownFieldSummaryTests(unittest.TestCase):
+    def test_an_unknown_field_is_shown_with_what_the_user_said(self):
+        from ai_assistant import memory
+        from ai_assistant.library import load_library
+
+        library = load_library()
+        state = memory.with_understanding(
+            memory.initial_state("customer"),
+            "unclear",
+            {
+                "code": {"value": None, "quote": "não sei meu código", "origin": "unknown"},
+                "customer_name": {"value": None, "quote": None, "origin": "absent"},
+            },
+        )
+        text = ui_text.format_summary(state, library.profiles["customer"])
+        self.assertIn('Código: desconhecido (o usuário disse: "não sei meu código")', text)
+        self.assertIn("Nome do cliente: ausente", text)
+
+
 class FailureTests(unittest.TestCase):
     def test_a_model_failure_is_explained_without_a_traceback_and_hands_over_to_a_person(self):
         def failing(_profile):

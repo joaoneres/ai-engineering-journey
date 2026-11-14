@@ -69,6 +69,8 @@ class Profile:
     tasks: tuple[str, ...]
     hidden_fields: tuple[str, ...] = ()
     conclude_with: str | None = None
+    must_mention: tuple[str, ...] = ()
+    field_help: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -215,6 +217,25 @@ def _conclusion(data: dict, vocabulary: Vocabulary, where: str) -> str | None:
     return action
 
 
+def _field_help(
+    data: dict, required_fields: tuple[str, ...], where: str
+) -> tuple[tuple[str, str], ...]:
+    """What each required field means. Optional, but when present it must cover every field."""
+    raw = data.get("field_help")
+    if raw is None:
+        return ()
+    if not isinstance(raw, dict):
+        raise LibraryError(f"{where}: 'field_help' must be a table")
+    not_covered = [name for name in required_fields if name not in raw]
+    unknown = [name for name in raw if name not in required_fields]
+    if not_covered or unknown:
+        raise LibraryError(
+            f"{where}: field_help must describe exactly the required fields "
+            f"(missing {not_covered}, unknown {unknown})"
+        )
+    return tuple((name, _text(raw, name, f"{where} [field_help]")) for name in required_fields)
+
+
 def _load_profile(path: Path, prompts: dict[str, Prompt], vocabulary: Vocabulary) -> Profile:
     data = _read_toml(path)
     where = path.name
@@ -238,14 +259,17 @@ def _load_profile(path: Path, prompts: dict[str, Prompt], vocabulary: Vocabulary
     missing_core = [task for task in CORE_TASKS if task not in tasks]
     if missing_core:
         raise LibraryError(f"{where}: tasks must include {missing_core}")
+    required_fields = _text_list(data, "required_fields", where)
     return Profile(
         id=profile_id,
         role=_text(data, "role", where),
         intents=intents,
-        required_fields=_text_list(data, "required_fields", where),
+        required_fields=required_fields,
         tasks=tasks,
         hidden_fields=_text_list(data, "hidden_fields", where) if "hidden_fields" in data else (),
         conclude_with=_conclusion(data, vocabulary, where),
+        must_mention=_text_list(data, "must_mention", where) if "must_mention" in data else (),
+        field_help=_field_help(data, required_fields, where),
     )
 
 

@@ -4,3 +4,7 @@ intents = ["delivery", "proof", "human_escalation"]
 required_fields = ["code", "customer_name"]
 tasks = ["classification", "extraction", "internal_response"]
 hidden_fields = ["customer", "address"]
+
+[field_help]
+code = "tracking code of the delivery, such as ABC123"
+customer_name = "the name of the person writing, exactly as they gave it"

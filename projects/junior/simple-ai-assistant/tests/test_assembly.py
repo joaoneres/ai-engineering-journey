@@ -40,9 +40,27 @@ class SystemPromptTests(unittest.TestCase):
         self.assertIn("asking", respond)
         self.assertIn("covers ALL those fields", respond)
 
+    def test_each_required_field_comes_with_its_meaning(self):
+        driver = LIBRARY.profiles["driver"]
+        prompt = assembly.build_system(LIBRARY, driver, assembly.UNDERSTAND)
+        self.assertIn("- reported_address:", prompt)
+        self.assertIn("REAL one at the location (not the registered address)", prompt)
+
+    def test_the_rules_explain_unknown_fields_and_the_single_hand_off(self):
+        prompt = assembly.build_system(LIBRARY, CUSTOMER, assembly.RESPOND)
+        self.assertIn("memory.unknown", prompt)
+        self.assertIn("memory.handed_off", prompt)
+
+    def test_the_extraction_prompt_explains_the_unknown_origin(self):
+        prompt = assembly.build_system(LIBRARY, CUSTOMER, assembly.UNDERSTAND)
+        self.assertIn("unknown", prompt)
+        self.assertIn("they do not know a field", prompt)
+        self.assertIn("não sei meu código", prompt)
+
     def test_prompts_name_the_required_fields_and_the_vocabulary(self):
         prompt = assembly.build_system(LIBRARY, OPERATOR, assembly.RESPOND)
-        self.assertIn("code, description, location, time", prompt)
+        for field in ("code", "description", "location", "time"):
+            self.assertIn(f"- {field}:", prompt)
         self.assertIn("escalate_to_human", prompt)
 
     def test_prompt_mentions_json_and_shows_the_output_shape(self):

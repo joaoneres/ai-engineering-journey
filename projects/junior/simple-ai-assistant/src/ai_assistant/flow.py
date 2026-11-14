@@ -107,8 +107,9 @@ class Flow:
 
         # 3. respond
         missing_all = memory.missing_fields(state, required)
-        unknown = memory.unknown_after_asking(missing_all, state)
-        missing = tuple(name for name in missing_all if name not in unknown)
+        gave_up = memory.unknown_after_asking(missing_all, state)
+        missing = tuple(name for name in missing_all if name not in gave_up)
+        unknown = memory.unknown_fields(state, required) + gave_up
         evidence = rubrics.Evidence(message, memory.memory_texts(state), record)
         responded = self._ask(
             assembly.build_system(self.library, profile, assembly.RESPOND),
@@ -126,6 +127,8 @@ class Flow:
                     missing=missing,
                     hidden_fields=profile.hidden_fields,
                     conclude_with=profile.conclude_with,
+                    must_mention=profile.must_mention,
+                    already_handed_off=state.handed_off,
                 )
             ),
         )

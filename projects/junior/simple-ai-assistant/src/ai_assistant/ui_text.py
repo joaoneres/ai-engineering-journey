@@ -33,6 +33,7 @@ ORIGIN_LABELS = {
     "informed": "informado",
     "inferred": "inferido",
     "absent": "ausente",
+    "unknown": "desconhecido",
     "base": "base",
 }
 PRIORITY_LABELS = {"low": "Baixa", "medium": "Média", "high": "Alta"}
@@ -64,7 +65,10 @@ USER_PROMPT = "Você: "
 ASSISTANT_PREFIX = "IA:   "
 WORKING = "IA está respondendo…"
 ASK_CONTINUE = "Posso ajudar em mais alguma coisa? (s/n): "
-CONTINUE_HINT = "Pode continuar. Use /novo para tratar outro caso."
+CONTINUE_HINT = (
+    "Pode continuar: digite a próxima mensagem. "
+    "Use /novo para tratar outro caso ou /sair para voltar ao menu."
+)
 YES_ANSWERS = ("s", "sim", "y", "yes")
 NEW_CONVERSATION = "Nova conversa iniciada."
 BACK_TO_MENU = "Voltando ao menu."
@@ -83,6 +87,7 @@ UNEXPECTED_ERROR = "Ocorreu um erro inesperado ({kind}). A conversa foi encerrad
 SUMMARY_TITLE = "Registro estruturado"
 SUMMARY_EMPTY = "Ainda não há dados nesta conversa."
 ABSENT = "ausente"
+UNKNOWN = "desconhecido"
 FINAL_ACTIONS = ("hand_off_to_team", "escalate_to_human", "close")
 
 
@@ -97,7 +102,9 @@ def _field_lines(state: ConversationState, profile: Profile, style: Style) -> li
     for name in names:
         label = FIELD_LABELS.get(name, name)
         item = known.get(name)
-        if item is not None and item.present:
+        if item is not None and item.unknown:
+            text = f'{label}: {UNKNOWN} (o usuário disse: "{item.quote}")'
+        elif item is not None and item.present:
             text = f"{label}: {item.value} ({_origin(item.origin)})"
         else:
             text = f"{label}: {ABSENT}"

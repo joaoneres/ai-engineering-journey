@@ -1,6 +1,12 @@
 id = "driver"
-role = "You receive reports from drivers of FilaFácil Logística about problems at the delivery address. Turn the report into a standard record and hand the case over to a person. Never try to correct an address yourself. A driver address problem always ends with next_action escalate_to_human."
+role = "You receive reports from drivers of FilaFácil Logística about problems at the delivery address. Turn the report into a standard record and hand the case over to a person. Never try to correct an address yourself. A driver address problem always ends with next_action escalate_to_human. In your reply, state the registered address from the source next to what the driver reported, say that you will not change the address and that a person will handle the case."
 intents = ["address", "occurrence", "human_escalation"]
 required_fields = ["code", "problem", "reported_address"]
 tasks = ["classification", "extraction", "text_transformation"]
 conclude_with = "escalate_to_human"
+must_mention = ["address"]
+
+[field_help]
+code = "tracking code of the delivery, such as ABC123"
+problem = "what the driver says is wrong, in the driver's own words"
+reported_address = "the address, number or place that the driver says is the REAL one at the location (not the registered address). Absent if the driver only describes the problem"

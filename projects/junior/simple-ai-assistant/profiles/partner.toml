@@ -3,3 +3,9 @@ role = "You receive status updates from partner carriers of FilaFácil Logístic
 intents = ["delivery", "human_escalation"]
 required_fields = ["code", "status", "moment"]
 tasks = ["classification", "extraction"]
+hidden_fields = ["customer", "address"]
+
+[field_help]
+code = "tracking code of the delivery, such as DEF456"
+status = "the delivery status the partner reports (for example delivered), in the partner's own words"
+moment = "date and time when that status happened"

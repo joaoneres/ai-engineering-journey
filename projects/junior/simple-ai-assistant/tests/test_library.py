@@ -44,10 +44,23 @@ class LibraryLoadTests(unittest.TestCase):
             self.assertIn("classification", profile.tasks)
             self.assertIn("extraction", profile.tasks)
 
-    def test_only_the_customer_hides_source_fields(self):
-        self.assertEqual(self.library.profiles["customer"].hidden_fields, ("customer", "address"))
-        for profile_id in ("operator", "partner", "driver"):
+    def test_the_customer_and_the_partner_hide_the_customer_data(self):
+        for profile_id in ("customer", "partner"):
+            self.assertEqual(
+                self.library.profiles[profile_id].hidden_fields, ("customer", "address")
+            )
+        for profile_id in ("operator", "driver"):
             self.assertEqual(self.library.profiles[profile_id].hidden_fields, ())
+
+    def test_the_driver_must_mention_the_registered_address(self):
+        self.assertEqual(self.library.profiles["driver"].must_mention, ("address",))
+        self.assertEqual(self.library.profiles["customer"].must_mention, ())
+
+    def test_every_profile_describes_each_required_field(self):
+        for profile in self.library.profiles.values():
+            self.assertEqual(
+                [name for name, _ in profile.field_help], list(profile.required_fields)
+            )
 
     def test_only_the_driver_must_always_conclude_by_escalating(self):
         self.assertEqual(self.library.profiles["driver"].conclude_with, "escalate_to_human")
@@ -135,6 +148,18 @@ class LibraryValidationTests(unittest.TestCase):
     def test_refuses_a_profile_that_concludes_with_an_unknown_action(self):
         self.edit("profiles/driver.toml", '"escalate_to_human"\n', '"fly_away"\n')
         self.assertRefused("driver.toml", "conclude_with")
+
+    def test_refuses_field_help_that_does_not_cover_the_required_fields(self):
+        self.edit(
+            "profiles/customer.toml",
+            'customer_name = "the name of the person writing, exactly as they gave it"\n',
+            "",
+        )
+        self.assertRefused("customer.toml", "field_help")
+
+    def test_refuses_field_help_for_a_field_that_is_not_required(self):
+        self.edit("profiles/customer.toml", "[field_help]\n", '[field_help]\ncolour = "red"\n')
+        self.assertRefused("customer.toml", "field_help")
 
     def test_refuses_a_profile_with_an_unknown_task(self):
         self.edit("profiles/driver.toml", '"text_transformation"', '"magic"')

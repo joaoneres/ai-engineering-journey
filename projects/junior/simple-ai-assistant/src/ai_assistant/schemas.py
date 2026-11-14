@@ -13,7 +13,8 @@ import json
 from ai_assistant.library import UNCLEAR_INTENT, Library, Profile, Vocabulary
 
 # Origins a value of each kind is allowed to have.
-FIELD_ORIGINS = ("informed", "inferred", "absent")
+FIELD_ORIGINS = ("informed", "inferred", "absent", "unknown")
+PRIORITY_ORIGINS = ("informed", "inferred", "absent")
 FACT_ORIGINS = ("informed", "inferred", "base", "absent")
 RESPOND_BASE_KEYS = ("speech", "facts", "asking", "next_action")
 
@@ -115,7 +116,7 @@ def _output_spec(
         "internal_note": _object(
             {
                 "priority": _enum(vocabulary.priorities, nullable=True),
-                "priority_origin": _enum(FIELD_ORIGINS),
+                "priority_origin": _enum(PRIORITY_ORIGINS),
                 "text": _string(),
             }
         ),

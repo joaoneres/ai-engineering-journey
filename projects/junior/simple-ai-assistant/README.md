@@ -115,7 +115,7 @@ src/ai_assistant/
   ui_text.py          every text shown to the user (Portuguese)
   ui_style.py         width, wrapping and colours (no user-facing text)
   cli.py              profile menu and chat box
-tests/                226 tests, all offline
+tests/                255 tests, all offline
 ```
 
 ## 6. The prompt library
@@ -140,8 +140,11 @@ A **profile** says who the user is and composes the tasks:
 |---|---|---|---|---|
 | `customer` | delivery, proof, human_escalation | code, customer_name | internal_response | never reveals the customer name or address from the base |
 | `operator` | occurrence, delivery, human_escalation | code, description, location, time | summarization, internal_response | |
-| `partner` | delivery, human_escalation | code, status, moment | none | |
-| `driver` | address, occurrence, human_escalation | code, problem, reported_address | text_transformation | always concludes by escalating to a person |
+| `partner` | delivery, human_escalation | code, status, moment | none | never sees the customer name or address either |
+| `driver` | address, occurrence, human_escalation | code, problem, reported_address | text_transformation | always concludes by escalating to a person and must state the registered address next to the reported one |
+
+Each profile also describes what every required field **means** (`[field_help]` in its TOML, shown
+in the prompt), because the model misread ambiguous fields such as the driver's `reported_address`.
 
 `unclear` is always allowed. `prompts/global_rules.toml` holds the rules shared by every task
 (use only the message, the memory and the source; never invent; tag every value with its origin;
@@ -168,8 +171,13 @@ there is no unbounded loop.
 An immutable state, replaced at every turn: the fields collected so far, the fields already asked
 and the last four turns. A known value is never forgotten, and a specific intent is not overwritten
 by a later vague message. When the assistant asks, it declares in `asking` which missing fields the
-question covers (validated against what is missing), and only those count as asked. A field that
-was asked and is still missing is treated as unknown and not asked again. The memory shown to the
+question covers (validated against what is missing), and each is counted. A required field is
+**resolved** when it has a value, when the user **explicitly** says they do not know it or will not
+tell it (origin `unknown`, with the user's words as the quote, shown in the record), or when it was
+asked twice without an answer. Resolved fields are never asked again.
+
+After the assistant hands the case to the team, it cannot hand it off again unless the user gives
+something new: further messages are just answered. The memory shown to the
 model is a compact view, not the whole history.
 
 ### Rubrics
@@ -183,6 +191,9 @@ model is a compact view, not the whole history.
 | entities | codes, dates and names in the text shown to people come from the sources |
 | disclosure | a profile never repeats hidden source values the user did not provide |
 | false actions | the assistant never says "registrei", "anotei", "salvei"... |
+| unknown | an `unknown` field has a null value and a quote that really is in the message |
+| mentions | a profile can require the reply to state a registered value (the driver's address) |
+| record claim | "Preparei o registro" is only allowed in a turn that hands the case over |
 | asking | the declared `asking` fields are really missing, and a question has a question mark |
 | absent facts | an `absent` fact has a null value; placeholder text is refused |
 | next action | consistent with the intent and with what is still missing |
