@@ -188,6 +188,11 @@ Reproduce any of them with `python scripts/run_local.py`.
 3. The pipeline runs against `prod`, needs the `PUBLISH_TOKEN` secret (section 6) and creates the
    GitHub Release with the wheel, the sdist and `manifest.json`.
 
+Version 1.0.0 was released this way: [run of the tag](https://github.com/joaoneres/ai-engineering-journey/actions/runs/43543018056)
+and [Release `simple-report-v1.0.0`](https://github.com/joaoneres/ai-engineering-journey/releases/tag/simple-report-v1.0.0)
+(wheel, sdist and `manifest.json` with `status: published`). Re-running that same run (attempt 2)
+logged `já publicado; nada a fazer (sem duplicar)` and created nothing new.
+
 ## 11. Making the checks block merges (one-time repository setting)
 
 The pipeline reports the checks, but only the repository settings can *enforce* them: *Settings →
