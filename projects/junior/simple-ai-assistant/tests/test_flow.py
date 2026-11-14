@@ -286,11 +286,18 @@ class AskedFieldsTests(unittest.TestCase):
 
 
 class UnknownAnswerTests(unittest.TestCase):
-    """Regression: 'I do not know my code' used to end in an escalation."""
+    """'I do not know my code' is an explicit unknown, not an escalation."""
 
-    UNDERSTAND = {"intent": "unclear", "fields": {"code": ABSENT, "customer_name": ABSENT}}
+    CUSTOMER_UNKNOWN = {
+        "intent": "delivery",
+        "fields": {
+            "code": item(None, "não sei meu código", "unknown"),
+            "customer_name": item("Maria Souza", "Maria Souza"),
+        },
+    }
 
     def after_first_question(self):
+        first = {"intent": "unclear", "fields": {"code": ABSENT, "customer_name": ABSENT}}
         asking = {
             "speech": "Qual é o código da entrega e o seu nome?",
             "facts": [],
@@ -302,7 +309,7 @@ class UnknownAnswerTests(unittest.TestCase):
                 "text": "Faltam dados.",
             },
         }
-        flow = Flow(LIBRARY, ScriptedModel([self.UNDERSTAND, asking]), DELIVERIES)
+        flow = Flow(LIBRARY, ScriptedModel([first, asking]), DELIVERIES)
         return flow.turn(flow.start("customer"), "olá").state
 
     def respond(self, value):
@@ -318,20 +325,63 @@ class UnknownAnswerTests(unittest.TestCase):
             },
         }
 
-    def test_unknown_fields_reported_as_absent_facts_do_not_escalate(self):
+    def test_an_explicit_unknown_resolves_the_field_and_the_case_can_conclude(self):
         state = self.after_first_question()
-        _, _, result = run(
-            "customer", "eu não sei meu código", [self.UNDERSTAND, self.respond(None)], state
-        )
+        message = "eu não sei meu código, mas sou Maria Souza"
+        _, _, result = run("customer", message, [self.CUSTOMER_UNKNOWN, self.respond(None)], state)
         self.assertIsNone(result.failure)
         self.assertEqual(result.next_action, "hand_off_to_team")
+        self.assertTrue(result.state.field("code").unknown)
+
+    def test_an_unknown_needs_a_real_quote(self):
+        state = self.after_first_question()
+        invented = {
+            "intent": "delivery",
+            "fields": {
+                "code": item(None, "não faço ideia", "unknown"),
+                "customer_name": item("Maria Souza", "Maria Souza"),
+            },
+        }
+        message = "eu não sei meu código, mas sou Maria Souza"
+        _, model, result = run(
+            "customer", message, [invented, self.CUSTOMER_UNKNOWN, self.respond(None)], state
+        )
+        self.assertIsNone(result.failure)
+        self.assertIn("does not appear in the message", model.calls[1][1])
 
     def test_placeholder_text_as_a_value_is_rejected_with_a_clear_error_then_fixed(self):
         state = self.after_first_question()
-        answers = [self.UNDERSTAND, self.respond("não informado"), self.respond(None)]
-        _, model, result = run("customer", "eu não sei meu código", answers, state)
+        message = "eu não sei meu código, mas sou Maria Souza"
+        answers = [self.CUSTOMER_UNKNOWN, self.respond("não informado"), self.respond(None)]
+        _, model, result = run("customer", message, answers, state)
         self.assertIsNone(result.failure)
         self.assertIn("placeholder text", model.calls[2][1])
+
+    def test_the_summary_keeps_what_the_user_said_about_the_unknown_field(self):
+        state = self.after_first_question()
+        message = "eu não sei meu código, mas sou Maria Souza"
+        _, _, result = run("customer", message, [self.CUSTOMER_UNKNOWN, self.respond(None)], state)
+        stored = result.state.field("code")
+        self.assertEqual(
+            (stored.value, stored.quote, stored.origin), (None, "não sei meu código", "unknown")
+        )
+
+
+class RecordClaimFlowTests(unittest.TestCase):
+    def test_the_assistant_cannot_say_it_prepared_a_record_when_nothing_is_handed_over(self):
+        claims = customer_respond(
+            speech=(
+                "O prazo do ABC123 é 20/11/2026. Preparei o registro para a equipe. "
+                "Qual é o seu nome?"
+            )
+        )
+        _, model, result = run(
+            "customer",
+            "meu pacote ABC123 não chegou",
+            [customer_understand(), claims, customer_respond()],
+        )
+        self.assertIsNone(result.failure)
+        self.assertIn("does not hand the case over", model.calls[2][1])
 
 
 class EscalationTests(unittest.TestCase):
@@ -374,43 +424,157 @@ class EscalationTests(unittest.TestCase):
         self.assertEqual(second.state.last_next_action, "escalate_to_human")
 
 
-class NoRepeatedQuestionTests(unittest.TestCase):
-    def test_a_field_already_asked_is_not_asked_again(self):
-        scenario = load_scenario("partner")
-        first_flow = Flow(LIBRARY, scenario.scripted_model(), DELIVERIES)
-        first = first_flow.turn(first_flow.start("partner"), scenario.turns[0].user)
-        self.assertEqual(first.state.asked, ("moment",))
+class AskLimitTests(unittest.TestCase):
+    """A field is asked at most twice; after that it is treated as unknown and never asked again."""
 
-        understand = {
-            "intent": "delivery",
-            "fields": {
-                "code": item("DEF456", "pacote DEF456"),
-                "status": item("entregue", "entregue"),
-                "moment": ABSENT,
-            },
-        }
-        asks_again = {
-            "speech": "Qual foi a data e a hora da entrega?",
+    PARTNER_UNDERSTAND = {
+        "intent": "delivery",
+        "fields": {
+            "code": item("DEF456", "pacote DEF456"),
+            "status": item("entregue", "entregue"),
+            "moment": ABSENT,
+        },
+    }
+
+    def ask(self, speech="Qual foi a data e a hora da entrega?"):
+        return {
+            "speech": speech,
             "facts": [],
-            "asking": [],
+            "asking": ["moment"],
             "next_action": "ask_missing_information",
         }
-        concludes = {
+
+    def conclude(self):
+        return {
             "speech": "Tudo bem, vou deixar a data e a hora da entrega como desconhecidas.",
             "facts": [],
             "asking": [],
             "next_action": "hand_off_to_team",
         }
-        _, model, result = run(
-            "partner", "não sei", [understand, asks_again, concludes], first.state
+
+    def first_turn_state(self):
+        scenario = load_scenario("partner")
+        flow = Flow(LIBRARY, scenario.scripted_model(), DELIVERIES)
+        first = flow.turn(flow.start("partner"), scenario.turns[0].user)
+        self.assertEqual(first.state.asked, ("moment",))
+        self.assertEqual(first.state.times_asked("moment"), 1)
+        return first.state
+
+    def test_after_one_question_the_field_is_still_missing_and_may_be_asked_again(self):
+        state = self.first_turn_state()
+        _, _, result = run("partner", "não entendi", [self.PARTNER_UNDERSTAND, self.ask()], state)
+        self.assertIsNone(result.failure)
+        self.assertEqual(result.next_action, "ask_missing_information")
+        self.assertEqual(result.state.times_asked("moment"), 2)
+
+    def test_concluding_after_only_one_question_is_refused(self):
+        state = self.first_turn_state()
+        answers = [self.PARTNER_UNDERSTAND, self.conclude(), self.ask()]
+        _, model, result = run("partner", "não entendi", answers, state)
+        self.assertIsNone(result.failure)
+        self.assertIn("required fields are missing", model.calls[2][1])
+
+    def test_after_two_questions_the_field_is_unknown_and_asking_again_is_refused(self):
+        state = self.first_turn_state()
+        state = run("partner", "hm", [self.PARTNER_UNDERSTAND, self.ask()], state)[2].state
+        answers = [self.PARTNER_UNDERSTAND, self.ask(), self.conclude()]
+        _, model, result = run("partner", "ainda não sei", answers, state)
+        self.assertIsNone(result.failure)
+        self.assertEqual(result.next_action, "hand_off_to_team")
+        self.assertIn("nothing is missing", model.calls[2][1])
+        self.assertIn('"unknown": ["moment"]', model.calls[1][1])
+
+
+class HandOffOnceTests(unittest.TestCase):
+    """After a hand-off the assistant only answers, unless the user gives something new."""
+
+    def handed_off_state(self):
+        scenario = load_scenario("operator")
+        flow = Flow(LIBRARY, scenario.scripted_model(), DELIVERIES)
+        result = flow.turn(flow.start("operator"), scenario.turns[0].user)
+        self.assertTrue(result.state.handed_off)
+        return result.state
+
+    def operator_respond(self, action):
+        return {
+            "speech": "A entrega XYZ789 segue em trânsito, com prazo em 18/11/2026.",
+            "facts": [{"field": "status", "value": "in_transit", "origin": "base"}],
+            "asking": [],
+            "next_action": action,
+            "summary": "Caminhão quebrou na BR-116 km 80.",
+            "internal_note": {
+                "priority": "high",
+                "priority_origin": "inferred",
+                "text": "XYZ789: caminhão quebrado. Prioridade alta (inferida).",
+            },
+        }
+
+    def same_fields(self):
+        return {
+            "intent": "occurrence",
+            "fields": {
+                "code": item("XYZ789", "XYZ789"),
+                "description": item("caminhão quebrou", "caminhão quebrou"),
+                "location": item("BR-116 km 80", "BR-116 km 80"),
+                "time": item("14h", "avisou 14h"),
+            },
+        }
+
+    def test_a_second_hand_off_without_new_information_is_refused(self):
+        state = self.handed_off_state()
+        answers = [
+            self.same_fields(),
+            self.operator_respond("hand_off_to_team"),
+            self.operator_respond("provide_information"),
+        ]
+        _, model, result = run("operator", "e o prazo dele?", answers, state)
+        self.assertIsNone(result.failure)
+        self.assertEqual(result.next_action, "provide_information")
+        self.assertIn("already handed to the team", model.calls[2][1])
+
+    def test_new_information_allows_a_new_hand_off(self):
+        state = self.handed_off_state()
+        updated = self.same_fields()
+        updated["fields"]["time"] = item("15h", "agora são 15h")
+        _, _, result = run(
+            "operator", "agora são 15h", [updated, self.operator_respond("hand_off_to_team")], state
         )
         self.assertIsNone(result.failure)
         self.assertEqual(result.next_action, "hand_off_to_team")
-        self.assertEqual(result.model_calls, 3)
-        self.assertIn("nothing is missing", model.calls[2][1])
-        respond_prompt = model.calls[1][1]
-        self.assertIn('"unknown_after_asking": ["moment"]', respond_prompt)
 
+
+class ProfileRulesInTheFlowTests(unittest.TestCase):
+    def test_the_driver_must_state_the_registered_address(self):
+        scenario = load_scenario("driver")
+        understand, respond = scenario.turns[0].model
+        without = {
+            **respond,
+            "speech": "Preparei o registro do problema de endereço do pacote ABC123.",
+        }
+        _, model, result = run("driver", scenario.turns[0].user, [understand, without, respond])
+        self.assertIsNone(result.failure)
+        self.assertIn("must state the registered address", model.calls[2][1])
+
+    def test_the_partner_cannot_be_told_the_customer_name_or_address(self):
+        scenario = load_scenario("partner")
+        flow = Flow(LIBRARY, scenario.scripted_model(), DELIVERIES)
+        first = flow.turn(flow.start("partner"), scenario.turns[0].user)
+        understand, respond = scenario.turns[1].model
+        leaking = {
+            **respond,
+            "speech": (
+                "Entendi: o pacote DEF456 foi entregue em 13/11 às 9h. "
+                "No sistema consta o cliente Carla Dias, na Rua C, 3."
+            ),
+        }
+        _, model, result = run(
+            "partner", scenario.turns[1].user, [understand, leaking, respond], first.state
+        )
+        self.assertIsNone(result.failure)
+        self.assertIn("reveals the source field", model.calls[2][1])
+
+
+class NoRepeatedQuestionTests(unittest.TestCase):
     def test_concluding_with_missing_fields_is_refused_the_first_time(self):
         understand = customer_understand()
         concludes = customer_respond(next_action="hand_off_to_team")

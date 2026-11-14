@@ -129,6 +129,20 @@ def _capitalised_words(text: str) -> list[str]:
     return found
 
 
+PREPARED_PATTERN = re.compile(r"\bpreparei\b", re.IGNORECASE)
+RECORD_ACTIONS = ("hand_off_to_team", "escalate_to_human")
+
+
+def check_record_claim(text: str, action: str, label: str = "speech") -> list[str]:
+    """A claim to have prepared the record is only true when the turn hands the case over."""
+    if PREPARED_PATTERN.search(text) and action not in RECORD_ACTIONS:
+        return [
+            f"{label}: says it prepared a record for the team, but this turn does not hand the "
+            "case over (no record is shown); say it only with hand_off_to_team or escalate_to_human"
+        ]
+    return []
+
+
 def check_false_actions(text: str, label: str) -> list[str]:
     """The assistant cannot register, save, change or cancel anything, so it must not say it did."""
     return [
@@ -148,8 +162,22 @@ def check_understand(output: dict, evidence: Evidence) -> list[str]:
     return errors
 
 
+def _check_unknown(where: str, value: object, quote: object, evidence: Evidence) -> list[str]:
+    """An explicit "I do not know": no value, and the quote shows what the user said."""
+    errors = []
+    if value is not None:
+        errors.append(f"{where}: an unknown field must have value null")
+    if quote is None:
+        errors.append(f"{where}: an unknown field needs the exact quote of what the user said")
+    elif not _contains(evidence.user_texts(), quote):
+        errors.append(f"{where}: the quote '{quote}' does not appear in the message or the memory")
+    return errors
+
+
 def _check_extracted(where: str, item: dict, evidence: Evidence) -> list[str]:
     value, quote, origin = item["value"], item["quote"], item["origin"]
+    if origin == "unknown":
+        return _check_unknown(where, value, quote, evidence)
     if origin == "absent":
         if value is not None or quote is not None:
             return [f"{where}: an absent field must have value null and quote null"]
@@ -209,8 +237,10 @@ def check_record(record: dict, evidence: Evidence) -> list[str]:
     errors = []
     for name, item in record.items():
         where, value, origin = f"record.{name}", item["value"], item["origin"]
-        if (origin == "absent") != (value is None):
-            errors.append(f"{where}: the value is null if and only if the origin is 'absent'")
+        if (origin in ("absent", "unknown")) != (value is None):
+            errors.append(
+                f"{where}: the value is null if and only if the origin is 'absent' or 'unknown'"
+            )
         elif origin == "informed" and not _contains(evidence.user_texts(), value):
             errors.append(f"{where}: the informed value '{value}' is not in the message or memory")
         elif origin == "base":
@@ -227,9 +257,18 @@ def check_internal_note(note: dict, evidence: Evidence) -> list[str]:
 
 
 def check_next_action(
-    action: str, intent: str, missing: tuple[str, ...], conclude_with: str | None = None
+    action: str,
+    intent: str,
+    missing: tuple[str, ...],
+    conclude_with: str | None = None,
+    already_handed_off: bool = False,
 ) -> list[str]:
     """The next action must be coherent with the intent and with what is still missing."""
+    if action == "hand_off_to_team" and already_handed_off:
+        return [
+            "next_action: the case was already handed to the team and nothing new was provided; "
+            "answer with provide_information instead"
+        ]
     if conclude_with and action in CONCLUDING_ACTIONS and action != conclude_with:
         return [f"next_action: this profile must conclude with '{conclude_with}', not '{action}'"]
     if intent == HUMAN_ESCALATION and action != "escalate_to_human":
@@ -278,6 +317,19 @@ def check_asking(
     return errors
 
 
+def check_mentions(text: str, evidence: Evidence, fields: tuple[str, ...]) -> list[str]:
+    """Source values a profile must state (e.g. the registered address) must be in the text."""
+    errors = []
+    for name in fields:
+        value = (evidence.source or {}).get(name)
+        if value and not _contains([text], value):
+            errors.append(
+                f"speech: must state the registered {name} from the source ({value!r}) "
+                "next to what the user reported"
+            )
+    return errors
+
+
 def check_respond(
     output: dict,
     evidence: Evidence,
@@ -286,10 +338,13 @@ def check_respond(
     missing: tuple[str, ...],
     hidden_fields: tuple[str, ...] = (),
     conclude_with: str | None = None,
+    must_mention: tuple[str, ...] = (),
+    already_handed_off: bool = False,
 ) -> list[str]:
     """Check a `respond` answer: facts, texts shown to people, extras and the next action."""
     errors = check_facts(output["facts"], evidence)
     errors += check_disclosure(output["speech"], evidence, hidden_fields)
+    errors += check_mentions(output["speech"], evidence, must_mention)
     errors += check_asking(
         output["asking"], output["speech"], output["next_action"], intent, missing
     )
@@ -297,8 +352,11 @@ def check_respond(
         if label in output:
             errors += check_entities(output[label], evidence, label)
             errors += check_false_actions(output[label], label)
+    errors += check_record_claim(output["speech"], output["next_action"])
     if "internal_note" in output:
         errors += check_internal_note(output["internal_note"], evidence)
     if "record" in output:
         errors += check_record(output["record"], evidence)
-    return errors + check_next_action(output["next_action"], intent, missing, conclude_with)
+    return errors + check_next_action(
+        output["next_action"], intent, missing, conclude_with, already_handed_off
+    )

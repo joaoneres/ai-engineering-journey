@@ -78,13 +78,53 @@ class MemoryTests(unittest.TestCase):
         )
         self.assertEqual(memory.missing_fields(state, ("code", "moment")), ("moment",))
 
-    def test_unknown_after_asking_only_lists_fields_asked_before(self):
-        state = memory.with_turn(
-            self.state, "oi", "qual o nome?", "ask_missing_information", {}, ("customer_name",)
+    def test_a_field_asked_once_is_still_open_and_asked_twice_is_given_up(self):
+        once = memory.with_turn(
+            self.state, "oi", "nome?", "ask_missing_information", {}, ("customer_name",)
+        )
+        self.assertEqual(memory.unknown_after_asking(("customer_name", "code"), once), ())
+        twice = memory.with_turn(
+            once, "hm", "nome?", "ask_missing_information", {}, ("customer_name",)
         )
         self.assertEqual(
-            memory.unknown_after_asking(("customer_name", "code"), state), ("customer_name",)
+            memory.unknown_after_asking(("customer_name", "code"), twice), ("customer_name",)
         )
+        self.assertEqual(twice.times_asked("customer_name"), 2)
+
+    def test_an_explicit_unknown_resolves_the_field_and_keeps_the_quote(self):
+        state = memory.with_understanding(
+            self.state, "delivery", {"code": item(None, "não sei meu código", "unknown")}
+        )
+        self.assertEqual(memory.missing_fields(state, ("code",)), ())
+        self.assertEqual(memory.unknown_fields(state, ("code",)), ("code",))
+        self.assertIn("não sei meu código", memory.memory_texts(state))
+        self.assertFalse(state.field("code").present)
+
+    def test_a_later_absent_does_not_erase_an_unknown_but_a_value_replaces_it(self):
+        unknown = memory.with_understanding(
+            self.state, "delivery", {"code": item(None, "não sei meu código", "unknown")}
+        )
+        still = memory.with_understanding(unknown, "delivery", {"code": ABSENT})
+        self.assertTrue(still.field("code").unknown)
+        found = memory.with_understanding(still, "delivery", {"code": item("ABC123", "ABC123")})
+        self.assertEqual(found.field("code").value, "ABC123")
+        self.assertEqual(memory.unknown_fields(found, ("code",)), ())
+
+    def test_a_hand_off_is_remembered_and_new_information_reopens_it(self):
+        state = memory.with_understanding(
+            self.state, "delivery", {"code": item("ABC123", "ABC123")}
+        )
+        state = memory.with_turn(state, "a", "b", "hand_off_to_team", {})
+        self.assertTrue(state.handed_off)
+        same = memory.with_understanding(state, "delivery", {"code": item("ABC123", "ABC123")})
+        self.assertTrue(same.handed_off)
+        new = memory.with_understanding(state, "delivery", {"code": item("XYZ789", "XYZ789")})
+        self.assertFalse(new.handed_off)
+
+    def test_the_memory_view_tells_the_model_about_unknown_fields_and_the_hand_off(self):
+        view = memory.memory_view(self.state, ("code",), ("customer_name",))
+        self.assertEqual(view["unknown"], ["customer_name"])
+        self.assertFalse(view["handed_off"])
 
     def test_asked_fields_are_not_duplicated(self):
         state = memory.with_turn(self.state, "a", "b", "ask_missing_information", {}, ("code",))

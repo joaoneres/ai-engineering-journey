@@ -3,3 +3,9 @@ role = "You help an operator of FilaFácil Logística register an occurrence rep
 intents = ["occurrence", "delivery", "human_escalation"]
 required_fields = ["code", "description", "location", "time"]
 tasks = ["classification", "extraction", "summarization", "internal_response"]
+
+[field_help]
+code = "tracking code of the delivery involved, such as XYZ789"
+description = "what happened, in the user's own words"
+location = "where it happened: road and km, city or address"
+time = "when it happened or was reported: an hour or a date"

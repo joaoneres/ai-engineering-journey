@@ -85,6 +85,17 @@ class UnderstandSchemaTests(unittest.TestCase):
         self.assertTrue(any("missing key 'customer_name'" in error for error in errors))
         self.assertTrue(any("unexpected key 'colour'" in error for error in errors))
 
+    def test_unknown_is_an_origin_for_extracted_fields_but_not_for_facts_or_priority(self):
+        answer = copy.deepcopy(UNDERSTAND_OK)
+        answer["fields"]["code"] = field(None, "não sei meu código", "unknown")
+        self.assertEqual(understand_errors(answer, LIBRARY, CUSTOMER), [])
+        respond = copy.deepcopy(RESPOND_OK)
+        respond["facts"][0]["origin"] = "unknown"
+        respond["internal_note"]["priority_origin"] = "unknown"
+        errors = respond_errors(respond, LIBRARY, CUSTOMER)
+        self.assertTrue(any("facts[0].origin" in error for error in errors))
+        self.assertTrue(any("priority_origin" in error for error in errors))
+
     def test_base_is_not_an_origin_for_extracted_fields(self):
         answer = copy.deepcopy(UNDERSTAND_OK)
         answer["fields"]["code"]["origin"] = "base"

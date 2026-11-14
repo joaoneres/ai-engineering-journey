@@ -11,8 +11,9 @@ constraints = [
   "Extract ONLY what is written in the message or already stored in the conversation memory.",
   "Copy values EXACTLY as the user wrote them: do not rephrase, conjugate or abbreviate. If the user wrote \"caminhão quebrou\", the value is \"caminhão quebrou\", not \"caminhão quebrado\". If you must rephrase, use origin \"inferred\".",
   "Do not convert relative dates such as \"sexta\" or \"ontem\" into calendar dates.",
-  "A field can only have the origin informed, inferred or absent. A value already stored in <memory> is repeated with its original origin and quote; never use base or memory as the origin of a field.",
+  "A field can only have the origin informed, inferred, absent or unknown. A value already stored in <memory> is repeated with its original origin and quote; never use base or memory as the origin of a field.",
   "A field that does not appear gets value null, quote null and origin \"absent\".",
+  "If the user says they do not know a field or will not tell it, use origin \"unknown\" with value null and, as the quote, the exact words the user wrote (for example \"não sei meu código\"). Do not use \"unknown\" just because the user did not mention the field.",
   "Every value that is present must carry the exact quote from the message that supports it.",
   "Use origin \"inferred\" only for a probable conclusion, and then keep the quote that motivates it.",
 ]
@@ -47,3 +48,9 @@ type = "escalation"
 input = "isso é um absurdo, quero falar com o gerente sobre o ABC123"
 note = "Required fields: code, customer_name, deadline. Extract what is there; the escalation is decided elsewhere."
 output = '''{"fields": {"code": {"value": "ABC123", "quote": "ABC123", "origin": "informed"}, "customer_name": {"value": null, "quote": null, "origin": "absent"}, "deadline": {"value": null, "quote": null, "origin": "absent"}}}'''
+
+[[examples]]
+type = "counterexample"
+input = "eu não sei meu código"
+note = "Required fields: code, customer_name. The user says they do not know the code: mark it unknown, with their words as the quote. The name was not mentioned, so it is absent."
+output = '''{"fields": {"code": {"value": null, "quote": "não sei meu código", "origin": "unknown"}, "customer_name": {"value": null, "quote": null, "origin": "absent"}}}'''

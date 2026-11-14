@@ -40,8 +40,11 @@ CONVERSATION_RULES = (
     "provide_information, or finish with hand_off_to_team when the case is complete.",
     "Use escalate_to_human when the intent is human_escalation or when a person must handle "
     "the case.",
-    "Fields in memory.unknown_after_asking were already requested and the user did not provide "
-    "them. Say that they are unknown and never ask for them again.",
+    "Fields in memory.unknown are resolved: the user could not or would not provide them, or did "
+    "not provide them after being asked twice. Say that they are unknown and never ask for them "
+    "again.",
+    "If memory.handed_off is true and the user gave nothing new, answer the question with "
+    "provide_information. Do not hand the case off to the team again.",
     "If the source says found is false, say that you could not find the delivery and ask the "
     "user to check the code. Never use the origin base in that case.",
     "In facts list only values that exist. For a field that is missing or unknown, leave it out "
@@ -53,7 +56,8 @@ CONVERSATION_RULES = (
     'You do not register, save or change anything, so never write "registrei", "anotei", '
     '"gravei", "salvei", "cancelei", "agendei", "cadastrei", "alterei", '
     '"atualizei" or "corrigi". Say instead that you prepared the record for the team, for '
-    'example "Preparei o registro para a equipe".',
+    'example "Preparei o registro para a equipe". Say this only when next_action is '
+    "hand_off_to_team or escalate_to_human, because only then is the record shown.",
 )
 
 _TAG_PATTERN = re.compile(r"</?(message|memory|source|rejected_answer|validation_errors)>", re.I)
@@ -82,12 +86,20 @@ def _task_section(task: Prompt) -> list[str]:
     return lines
 
 
+def _required_fields_lines(profile: Profile) -> list[str]:
+    """The required fields, each with its meaning when the profile describes it."""
+    help_by_field = dict(profile.field_help)
+    if not help_by_field:
+        return [", ".join(profile.required_fields)]
+    return [f"- {name}: {help_by_field[name]}" for name in profile.required_fields]
+
+
 def build_system(library: Library, profile: Profile, stage: str) -> str:
     """The stable instructions for a profile and a stage."""
     vocabulary = library.vocabulary
     lines = ["# Role", profile.role, "", "# Global rules"]
     lines += [f"{number}. {rule}" for number, rule in enumerate(library.rules, start=1)]
-    lines += ["", "# Required fields", ", ".join(profile.required_fields)]
+    lines += ["", "# Required fields", *_required_fields_lines(profile)]
     if stage == UNDERSTAND:
         lines += ["", "# Allowed intents"]
         lines += [

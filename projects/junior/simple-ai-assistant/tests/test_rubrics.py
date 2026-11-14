@@ -9,8 +9,10 @@ from ai_assistant.rubrics import (
     check_facts,
     check_false_actions,
     check_internal_note,
+    check_mentions,
     check_next_action,
     check_record,
+    check_record_claim,
     check_respond,
     check_understand,
 )
@@ -52,6 +54,13 @@ class UnderstandRubricTests(unittest.TestCase):
     def test_quote_may_come_from_the_memory(self):
         ev = evidence(message="e o prazo?", memory=["pacote ABC123"])
         self.assertEqual(self.check(field("ABC123", "pacote ABC123", "informed"), ev), [])
+
+    def test_an_unknown_has_no_value_and_a_real_quote_of_what_the_user_said(self):
+        self.assertEqual(self.check(field(None, "pacote ABC123", "unknown")), [])
+        self.assertTrue(self.check(field("ABC123", "pacote ABC123", "unknown")))
+        self.assertTrue(self.check(field(None, None, "unknown")))
+        errors = self.check(field(None, "não faço ideia", "unknown"))
+        self.assertTrue(any("does not appear" in error for error in errors))
 
     def test_absent_must_be_null(self):
         errors = self.check(field("ABC123", None, "absent"))
@@ -175,6 +184,20 @@ class DisclosureTests(unittest.TestCase):
         self.assertEqual(check_respond(output, ev, intent="delivery", missing=()), [])
 
 
+class MentionTests(unittest.TestCase):
+    def test_the_registered_value_must_appear_in_the_text(self):
+        ev = evidence(source=SOURCE)
+        self.assertEqual(
+            check_mentions("Endereço cadastrado: Rua das Flores, 123.", ev, ("address",)), []
+        )
+        errors = check_mentions("Preparei o registro.", ev, ("address",))
+        self.assertTrue(any("registered address" in error for error in errors))
+
+    def test_nothing_is_required_without_a_source_or_without_fields(self):
+        self.assertEqual(check_mentions("x", evidence(), ("address",)), [])
+        self.assertEqual(check_mentions("x", evidence(source=SOURCE), ()), [])
+
+
 class AskingTests(unittest.TestCase):
     ASK = "ask_missing_information"
 
@@ -236,6 +259,19 @@ class FalseActionTests(unittest.TestCase):
         self.assertEqual(check_false_actions("Preparei um registro para a equipe.", "speech"), [])
 
 
+class RecordClaimTests(unittest.TestCase):
+    def test_prepared_the_record_is_only_allowed_when_the_case_is_handed_over(self):
+        text = "Preparei o registro para a equipe."
+        self.assertEqual(check_record_claim(text, "hand_off_to_team"), [])
+        self.assertEqual(check_record_claim(text, "escalate_to_human"), [])
+        for action in ("provide_information", "ask_missing_information", "close"):
+            errors = check_record_claim(text, action)
+            self.assertTrue(any("does not hand the case over" in error for error in errors), action)
+
+    def test_a_reply_without_the_claim_is_fine_for_any_action(self):
+        self.assertEqual(check_record_claim("O prazo é 20/11/2026.", "provide_information"), [])
+
+
 class NextActionTests(unittest.TestCase):
     def test_escalation_intent_requires_escalating(self):
         self.assertTrue(check_next_action("provide_information", "human_escalation", ()))
@@ -263,6 +299,12 @@ class NextActionTests(unittest.TestCase):
         )
         self.assertEqual(check_next_action("hand_off_to_team", "address", ()), [])
 
+    def test_a_second_hand_off_without_new_information_is_refused(self):
+        errors = check_next_action("hand_off_to_team", "delivery", (), None, True)
+        self.assertTrue(any("already handed to the team" in error for error in errors))
+        self.assertEqual(check_next_action("hand_off_to_team", "delivery", (), None, False), [])
+        self.assertEqual(check_next_action("provide_information", "delivery", (), None, True), [])
+
     def test_asking_for_what_is_missing_is_fine(self):
         self.assertEqual(check_next_action("ask_missing_information", "delivery", ("code",)), [])
 
@@ -273,6 +315,12 @@ class RecordAndNoteTests(unittest.TestCase):
         self.assertTrue(check_record(record, evidence()))
         record = {"code": {"value": None, "origin": "absent"}}
         self.assertEqual(check_record(record, evidence()), [])
+
+    def test_record_unknown_means_null_too(self):
+        good = {"code": {"value": None, "origin": "unknown"}}
+        bad = {"code": {"value": "ABC123", "origin": "unknown"}}
+        self.assertEqual(check_record(good, evidence()), [])
+        self.assertTrue(check_record(bad, evidence()))
 
     def test_record_informed_value_must_be_user_text(self):
         good = {"problem": {"value": "não chegou", "origin": "informed"}}
