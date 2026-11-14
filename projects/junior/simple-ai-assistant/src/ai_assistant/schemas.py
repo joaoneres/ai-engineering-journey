@@ -14,8 +14,8 @@ from ai_assistant.library import UNCLEAR_INTENT, Library, Profile, Vocabulary
 
 # Origins a value of each kind is allowed to have.
 FIELD_ORIGINS = ("informed", "inferred", "absent")
-FACT_ORIGINS = ("informed", "inferred", "base")
-RESPOND_BASE_KEYS = ("speech", "facts", "next_action")
+FACT_ORIGINS = ("informed", "inferred", "base", "absent")
+RESPOND_BASE_KEYS = ("speech", "facts", "asking", "next_action")
 
 
 # --- Spec building blocks ---------------------------------------------------------------------
@@ -122,8 +122,15 @@ def _output_spec(
         "record": _name_map(field_names, record_item),
         "speech": _string(),
         "facts": _list(
-            _object({"field": _string(), "value": _string(), "origin": _enum(FACT_ORIGINS)})
+            _object(
+                {
+                    "field": _string(),
+                    "value": _string(nullable=True),
+                    "origin": _enum(FACT_ORIGINS),
+                }
+            )
         ),
+        "asking": _list(_enum(field_names)),
         "next_action": _enum(vocabulary.next_actions),
     }
     if name not in specs:

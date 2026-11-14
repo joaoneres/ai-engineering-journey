@@ -29,6 +29,7 @@ def customer_respond(**overrides):
             "Qual é o seu nome?"
         ),
         "facts": [{"field": "deadline", "value": "2026-11-20", "origin": "base"}],
+        "asking": ["customer_name"],
         "next_action": "ask_missing_information",
         "internal_note": {
             "priority": None,
@@ -234,6 +235,105 @@ class DriverConclusionTests(unittest.TestCase):
         self.assertIn("must conclude with 'escalate_to_human'", model.calls[2][1])
 
 
+class AskedFieldsTests(unittest.TestCase):
+    """Regression: only the fields the assistant really asked about count as asked."""
+
+    OPERATOR_VAGUE = {
+        "intent": "unclear",
+        "fields": {"code": ABSENT, "description": ABSENT, "location": ABSENT, "time": ABSENT},
+    }
+
+    def operator_respond(self, asking, speech):
+        return {
+            "speech": speech,
+            "facts": [],
+            "asking": asking,
+            "next_action": "ask_missing_information",
+            "summary": "Mensagem sem detalhes da ocorrência.",
+            "internal_note": {
+                "priority": None,
+                "priority_origin": "absent",
+                "text": "Faltam dados.",
+            },
+        }
+
+    def test_asking_only_for_the_code_does_not_mark_the_other_fields_as_asked(self):
+        respond = self.operator_respond(["code"], "Qual é o código da entrega?")
+        _, _, result = run("operator", "olá", [self.OPERATOR_VAGUE, respond])
+        self.assertIsNone(result.failure)
+        self.assertEqual(result.state.asked, ("code",))
+
+    def test_asking_for_everything_in_one_question_marks_everything_as_asked(self):
+        fields = ["code", "description", "location", "time"]
+        respond = self.operator_respond(fields, "Qual o código, a descrição, o local e o horário?")
+        _, _, result = run("operator", "olá", [self.OPERATOR_VAGUE, respond])
+        self.assertEqual(result.state.asked, tuple(fields))
+
+    def test_a_declaration_that_does_not_match_what_is_missing_is_rejected(self):
+        wrong = self.operator_respond(["colour"], "Qual a cor?")
+        right = self.operator_respond(["code"], "Qual é o código da entrega?")
+        _, model, result = run("operator", "olá", [self.OPERATOR_VAGUE, wrong, right])
+        self.assertIsNone(result.failure)
+        self.assertEqual(result.model_calls, 3)
+        self.assertIn("output.asking", model.calls[2][1])
+
+    def test_a_reply_without_a_question_is_rejected_when_asking(self):
+        no_question = self.operator_respond(["code"], "Preciso do código da entrega.")
+        right = self.operator_respond(["code"], "Qual é o código da entrega?")
+        _, model, result = run("operator", "olá", [self.OPERATOR_VAGUE, no_question, right])
+        self.assertIsNone(result.failure)
+        self.assertIn("must contain a question", model.calls[2][1])
+
+
+class UnknownAnswerTests(unittest.TestCase):
+    """Regression: 'I do not know my code' used to end in an escalation."""
+
+    UNDERSTAND = {"intent": "unclear", "fields": {"code": ABSENT, "customer_name": ABSENT}}
+
+    def after_first_question(self):
+        asking = {
+            "speech": "Qual é o código da entrega e o seu nome?",
+            "facts": [],
+            "asking": ["code", "customer_name"],
+            "next_action": "ask_missing_information",
+            "internal_note": {
+                "priority": None,
+                "priority_origin": "absent",
+                "text": "Faltam dados.",
+            },
+        }
+        flow = Flow(LIBRARY, ScriptedModel([self.UNDERSTAND, asking]), DELIVERIES)
+        return flow.turn(flow.start("customer"), "olá").state
+
+    def respond(self, value):
+        return {
+            "speech": "Sem o código não consigo consultar. Vou encaminhar o caso para a equipe.",
+            "facts": [{"field": "code", "value": value, "origin": "absent"}],
+            "asking": [],
+            "next_action": "hand_off_to_team",
+            "internal_note": {
+                "priority": None,
+                "priority_origin": "absent",
+                "text": "Cliente sem código.",
+            },
+        }
+
+    def test_unknown_fields_reported_as_absent_facts_do_not_escalate(self):
+        state = self.after_first_question()
+        _, _, result = run(
+            "customer", "eu não sei meu código", [self.UNDERSTAND, self.respond(None)], state
+        )
+        self.assertIsNone(result.failure)
+        self.assertEqual(result.next_action, "hand_off_to_team")
+
+    def test_placeholder_text_as_a_value_is_rejected_with_a_clear_error_then_fixed(self):
+        state = self.after_first_question()
+        answers = [self.UNDERSTAND, self.respond("não informado"), self.respond(None)]
+        _, model, result = run("customer", "eu não sei meu código", answers, state)
+        self.assertIsNone(result.failure)
+        self.assertIn("placeholder text", model.calls[2][1])
+
+
 class EscalationTests(unittest.TestCase):
     def test_after_three_rejected_answers_the_turn_escalates_to_a_person(self):
         wrong = customer_respond(speech="Seu pacote ABC123 chega em 22/11/2026. Qual é o seu nome?")
@@ -271,6 +371,7 @@ class EscalationTests(unittest.TestCase):
         second = failing.turn(first.state, "e agora?")
         self.assertEqual(second.state.field("code").value, "ABC123")
         self.assertTrue(second.state.escalated)
+        self.assertEqual(second.state.last_next_action, "escalate_to_human")
 
 
 class NoRepeatedQuestionTests(unittest.TestCase):
@@ -291,11 +392,13 @@ class NoRepeatedQuestionTests(unittest.TestCase):
         asks_again = {
             "speech": "Qual foi a data e a hora da entrega?",
             "facts": [],
+            "asking": [],
             "next_action": "ask_missing_information",
         }
         concludes = {
             "speech": "Tudo bem, vou deixar a data e a hora da entrega como desconhecidas.",
             "facts": [],
+            "asking": [],
             "next_action": "hand_off_to_team",
         }
         _, model, result = run(

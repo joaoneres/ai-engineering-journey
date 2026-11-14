@@ -39,6 +39,9 @@
               "origin": "informed"
             }
           ],
+          "asking": [
+            "moment"
+          ],
           "next_action": "ask_missing_information"
         }
       ]
@@ -80,6 +83,7 @@
               "origin": "base"
             }
           ],
+          "asking": [],
           "next_action": "hand_off_to_team"
         }
       ]

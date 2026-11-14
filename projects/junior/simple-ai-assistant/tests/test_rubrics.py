@@ -3,6 +3,7 @@ import unittest
 from ai_assistant.library import load_library
 from ai_assistant.rubrics import (
     Evidence,
+    check_asking,
     check_disclosure,
     check_entities,
     check_facts,
@@ -163,6 +164,7 @@ class DisclosureTests(unittest.TestCase):
         output = {
             "speech": "Localizei o pacote ABC123, em nome de Maria Souza.",
             "facts": [],
+            "asking": [],
             "next_action": "provide_information",
         }
         ev = evidence(message="cadê o ABC123?", source=SOURCE)
@@ -171,6 +173,49 @@ class DisclosureTests(unittest.TestCase):
         )
         self.assertTrue(any("reveals the source field 'customer'" in error for error in errors))
         self.assertEqual(check_respond(output, ev, intent="delivery", missing=()), [])
+
+
+class AskingTests(unittest.TestCase):
+    ASK = "ask_missing_information"
+
+    def test_asking_lists_the_missing_fields_and_the_reply_has_a_question(self):
+        errors = check_asking(
+            ["code", "time"], "Qual o código e o horário?", self.ASK, "occurrence", ("code", "time")
+        )
+        self.assertEqual(errors, [])
+
+    def test_asking_cannot_be_empty_when_asking(self):
+        errors = check_asking([], "Qual é o código?", self.ASK, "delivery", ("code",))
+        self.assertTrue(any("list the missing fields" in error for error in errors))
+
+    def test_asking_cannot_name_a_field_that_is_not_missing(self):
+        errors = check_asking(["code"], "Qual é o código?", self.ASK, "delivery", ("time",))
+        self.assertTrue(any("are not missing fields" in error for error in errors))
+
+    def test_asking_must_be_empty_for_other_actions(self):
+        errors = check_asking(["code"], "Tudo certo.", "provide_information", "delivery", ())
+        self.assertTrue(any("must be an empty list" in error for error in errors))
+        self.assertEqual(check_asking([], "Tudo certo.", "provide_information", "delivery", ()), [])
+
+    def test_a_reply_that_asks_must_contain_a_question_mark(self):
+        errors = check_asking(["code"], "Preciso do código.", self.ASK, "delivery", ("code",))
+        self.assertTrue(any("must contain a question" in error for error in errors))
+
+    def test_a_clarifying_question_is_fine_even_if_nothing_is_missing(self):
+        self.assertEqual(check_asking([], "Do que você precisa?", self.ASK, "unclear", ()), [])
+
+
+class AbsentFactTests(unittest.TestCase):
+    def test_an_absent_fact_must_have_a_null_value(self):
+        good = [{"field": "code", "value": None, "origin": "absent"}]
+        placeholder = [{"field": "code", "value": "não informado", "origin": "absent"}]
+        self.assertEqual(check_facts(good, evidence()), [])
+        errors = check_facts(placeholder, evidence())
+        self.assertTrue(any("placeholder text" in error for error in errors))
+
+    def test_a_present_origin_cannot_have_a_null_value(self):
+        errors = check_facts([{"field": "code", "value": None, "origin": "informed"}], evidence())
+        self.assertTrue(errors)
 
 
 class FalseActionTests(unittest.TestCase):
@@ -250,6 +295,7 @@ class RespondRubricTests(unittest.TestCase):
                 {"field": "status", "value": "in_transit", "origin": "base"},
                 {"field": "deadline", "value": "2026-11-20", "origin": "base"},
             ],
+            "asking": [],
             "next_action": "provide_information",
         }
         return {**base, **overrides}

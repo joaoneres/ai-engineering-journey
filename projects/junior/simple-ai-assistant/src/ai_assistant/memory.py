@@ -63,7 +63,10 @@ def with_understanding(
         new = FieldValue(item["value"], item["quote"], item["origin"])
         if new.present or name not in merged:
             merged[name] = new
-    return replace(state, intent=intent, fields=tuple(merged.items()))
+    keep_previous = intent == "unclear" and state.intent not in (None, "unclear")
+    return replace(
+        state, intent=state.intent if keep_previous else intent, fields=tuple(merged.items())
+    )
 
 
 def missing_fields(state: ConversationState, required: tuple[str, ...]) -> tuple[str, ...]:
@@ -130,4 +133,4 @@ def with_turn(
 
 def escalated(state: ConversationState) -> ConversationState:
     """Mark the conversation as handed over to a person."""
-    return replace(state, escalated=True)
+    return replace(state, escalated=True, last_next_action="escalate_to_human")

@@ -39,6 +39,7 @@
               "origin": "informed"
             }
           ],
+          "asking": [],
           "next_action": "escalate_to_human",
           "record": {
             "code": {

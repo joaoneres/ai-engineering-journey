@@ -30,6 +30,7 @@ UNDERSTAND_OK = {
 RESPOND_OK = {
     "speech": "Localizei o pacote ABC123. Qual é o seu nome?",
     "facts": [{"field": "status", "value": "in_transit", "origin": "base"}],
+    "asking": ["customer_name"],
     "next_action": "ask_missing_information",
     "internal_note": {
         "priority": "medium",
@@ -118,7 +119,7 @@ class RespondSchemaTests(unittest.TestCase):
     def test_invalid_next_action_and_fact_origin(self):
         answer = copy.deepcopy(RESPOND_OK)
         answer["next_action"] = "do_magic"
-        answer["facts"][0]["origin"] = "absent"
+        answer["facts"][0]["origin"] = "memory"
         errors = respond_errors(answer, LIBRARY, CUSTOMER)
         self.assertTrue(any("next_action" in error for error in errors))
         self.assertTrue(any("facts[0].origin" in error for error in errors))
@@ -128,6 +129,23 @@ class RespondSchemaTests(unittest.TestCase):
         answer["internal_note"]["priority"] = "urgent"
         errors = respond_errors(answer, LIBRARY, CUSTOMER)
         self.assertTrue(any("internal_note.priority" in error for error in errors))
+
+    def test_asking_must_name_required_fields(self):
+        answer = copy.deepcopy(RESPOND_OK)
+        answer["asking"] = ["colour"]
+        errors = respond_errors(answer, LIBRARY, CUSTOMER)
+        self.assertTrue(any("output.asking[0]" in error for error in errors))
+
+    def test_asking_is_a_required_key(self):
+        answer = copy.deepcopy(RESPOND_OK)
+        del answer["asking"]
+        errors = respond_errors(answer, LIBRARY, CUSTOMER)
+        self.assertTrue(any("missing key 'asking'" in error for error in errors))
+
+    def test_an_absent_fact_may_have_a_null_value_at_schema_level(self):
+        answer = copy.deepcopy(RESPOND_OK)
+        answer["facts"].append({"field": "code", "value": None, "origin": "absent"})
+        self.assertEqual(respond_errors(answer, LIBRARY, CUSTOMER), [])
 
     def test_priority_may_be_null(self):
         answer = copy.deepcopy(RESPOND_OK)
