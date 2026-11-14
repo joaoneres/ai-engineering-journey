@@ -119,7 +119,7 @@ jobs:
           elif [ "$GITHUB_REF" = "refs/heads/main" ]; then environment=homolog
           else environment=dev; fi
           version=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
-          cat "config/${environment}.env" >> "$GITHUB_ENV"
+          grep -E '^[A-Z_]+=' "config/${environment}.env" >> "$GITHUB_ENV"
           {
             echo "environment=${environment}"
             echo "version=${version}"
