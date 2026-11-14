@@ -1,0 +1,88 @@
+{
+  "profile": "partner",
+  "description": "A partner sends an incomplete update; the assistant asks only for the missing moment.",
+  "turns": [
+    {
+      "user": "atualizando: entregue o pacote DEF456",
+      "model": [
+        {
+          "intent": "delivery",
+          "fields": {
+            "code": {
+              "value": "DEF456",
+              "quote": "pacote DEF456",
+              "origin": "informed"
+            },
+            "status": {
+              "value": "entregue",
+              "quote": "entregue",
+              "origin": "informed"
+            },
+            "moment": {
+              "value": null,
+              "quote": null,
+              "origin": "absent"
+            }
+          }
+        },
+        {
+          "speech": "Entendi: o pacote DEF456 consta como entregue na sua atualização. Para completar a atualização, qual foi a data e a hora da entrega?",
+          "facts": [
+            {
+              "field": "code",
+              "value": "DEF456",
+              "origin": "informed"
+            },
+            {
+              "field": "status",
+              "value": "entregue",
+              "origin": "informed"
+            }
+          ],
+          "next_action": "ask_missing_information"
+        }
+      ]
+    },
+    {
+      "user": "foi dia 13/11 às 9h",
+      "model": [
+        {
+          "intent": "delivery",
+          "fields": {
+            "code": {
+              "value": "DEF456",
+              "quote": "pacote DEF456",
+              "origin": "informed"
+            },
+            "status": {
+              "value": "entregue",
+              "quote": "entregue",
+              "origin": "informed"
+            },
+            "moment": {
+              "value": "13/11 às 9h",
+              "quote": "13/11 às 9h",
+              "origin": "informed"
+            }
+          }
+        },
+        {
+          "speech": "Entendi: o pacote DEF456 foi entregue em 13/11 às 9h, segundo a sua atualização. O sistema ainda mostra esse pacote como em rota, então a equipe precisa confirmar a divergência.",
+          "facts": [
+            {
+              "field": "moment",
+              "value": "13/11 às 9h",
+              "origin": "informed"
+            },
+            {
+              "field": "status",
+              "value": "in_transit",
+              "origin": "base"
+            }
+          ],
+          "next_action": "hand_off_to_team"
+        }
+      ]
+    }
+  ]
+}
