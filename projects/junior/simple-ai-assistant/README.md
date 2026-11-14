@@ -83,8 +83,17 @@ IA:   Olá, Maria! Sua entrega ABC123 está em trânsito, com prazo de entrega e
 ```
 
 `/resumo` shows the structured record so far, `/novo` starts over, `/sair` goes back to the menu.
-When a conversation concludes or is escalated, the structured record is printed. **Nothing is
-saved**: the assistant cannot register, change or cancel anything, and it never says it did.
+When the assistant hands the case to the team it prints the structured record and asks
+"Posso ajudar em mais alguma coisa? (s/n)": `s` keeps the conversation open, `n` goes back to the
+menu. An escalation to a person ends the conversation. **Nothing is saved**: the assistant cannot
+register, change or cancel anything, and it never says it did.
+
+### Terminal display
+
+Text is wrapped to the terminal width with a hanging indent, replies are separated by blank lines,
+and the record is shown in sections between rules. While the model is working a dim "IA está
+respondendo…" line is shown and then erased. Colours are used only on a real terminal: never in a
+pipe, never when `NO_COLOR` is set and never on a `dumb` terminal.
 
 ## 5. Project structure
 
@@ -104,8 +113,9 @@ src/ai_assistant/
   model.py            Model interface, ScriptedModel (tests, --demo), DeepSeekClient
   config.py           environment variables and a minimal .env reader
   ui_text.py          every text shown to the user (Portuguese)
+  ui_style.py         width, wrapping and colours (no user-facing text)
   cli.py              profile menu and chat box
-tests/                180 tests, all offline
+tests/                226 tests, all offline
 ```
 
 ## 6. The prompt library
@@ -156,9 +166,11 @@ there is no unbounded loop.
 ### Memory
 
 An immutable state, replaced at every turn: the fields collected so far, the fields already asked
-and the last four turns. A known value is never forgotten. A field that was already asked and is
-still missing is treated as unknown and never asked again. The memory shown to the model is a
-compact view, not the whole history.
+and the last four turns. A known value is never forgotten, and a specific intent is not overwritten
+by a later vague message. When the assistant asks, it declares in `asking` which missing fields the
+question covers (validated against what is missing), and only those count as asked. A field that
+was asked and is still missing is treated as unknown and not asked again. The memory shown to the
+model is a compact view, not the whole history.
 
 ### Rubrics
 
@@ -171,6 +183,8 @@ compact view, not the whole history.
 | entities | codes, dates and names in the text shown to people come from the sources |
 | disclosure | a profile never repeats hidden source values the user did not provide |
 | false actions | the assistant never says "registrei", "anotei", "salvei"... |
+| asking | the declared `asking` fields are really missing, and a question has a question mark |
+| absent facts | an `absent` fact has a null value; placeholder text is refused |
 | next action | consistent with the intent and with what is still missing |
 
 Known limit: the entity check looks at codes, dates and capitalised names; it does not judge the
