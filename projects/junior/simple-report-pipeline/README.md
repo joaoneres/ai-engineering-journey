@@ -125,6 +125,11 @@ workflow file itself. The tag carries the project prefix because the repository 
   `contents: write` (create the Release) and `actions: read` (look for an existing publication).
   Third-party actions are pinned to the commit SHA.
 
+> **The environments are simulated.** Nothing is deployed anywhere: "publishing" to `homolog` or
+> `prod` means producing the traceable artifact (`registry-<environment>-...`) and, for tags, a
+> GitHub Release with the files. There is no real production deployment, no external registry and
+> no paid service, as the case study requires.
+
 ## 7. Artifact and traceability
 
 Every build produces `dist-<version>-<sha7>` with the wheel, the source distribution and
