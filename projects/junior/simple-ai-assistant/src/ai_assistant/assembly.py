@@ -42,7 +42,12 @@ CONVERSATION_RULES = (
     "If the source says found is false, say that you could not find the delivery and ask the "
     "user to check the code. Never use the origin base in that case.",
     "Put in facts every value you mention that came from the source, with origin base, the "
-    "source field name and the exact source value.",
+    "source field name and the exact source value. A fact with origin informed must copy the "
+    "user's words exactly.",
+    'You do not register, save or change anything, so never write "registrei", "anotei", '
+    '"gravei", "salvei", "cancelei", "agendei", "cadastrei", "alterei", '
+    '"atualizei" or "corrigi". Say instead that you prepared the record for the team, for '
+    'example "Preparei o registro para a equipe".',
 )
 
 _TAG_PATTERN = re.compile(r"</?(message|memory|source|rejected_answer|validation_errors)>", re.I)

@@ -119,8 +119,13 @@ def format_summary(state: ConversationState, profile: Profile) -> str:
         lines.append(f"Resumo: {extras['summary']}")
     if "internal_note" in extras:
         note = extras["internal_note"]
-        priority = PRIORITY_LABELS.get(note["priority"], ABSENT)
-        lines.append(f"Nota interna: prioridade {priority} ({_origin(note['priority_origin'])})")
+        if note["priority"] is None:
+            lines.append("Nota interna: prioridade não definida")
+        else:
+            priority = PRIORITY_LABELS.get(note["priority"], note["priority"])
+            lines.append(
+                f"Nota interna: prioridade {priority} ({_origin(note['priority_origin'])})"
+            )
         lines.append(f"  {note['text']}")
     if "record" in extras:
         lines += ["Registro padronizado:", *_record_lines(extras["record"])]

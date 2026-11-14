@@ -142,6 +142,31 @@ class ChatTests(unittest.TestCase):
         self.assertNotIn("Traceback", text)
 
 
+class SummaryFormatTests(unittest.TestCase):
+    def test_an_undefined_priority_is_shown_without_redundancy(self):
+        from ai_assistant import memory
+        from ai_assistant.library import load_library
+
+        library = load_library()
+        state = memory.initial_state("customer")
+        state = memory.with_turn(
+            state,
+            "oi",
+            "ok",
+            "provide_information",
+            {
+                "internal_note": {
+                    "priority": None,
+                    "priority_origin": "absent",
+                    "text": "Faltam dados.",
+                }
+            },
+        )
+        text = ui_text.format_summary(state, library.profiles["customer"])
+        self.assertIn("prioridade não definida", text)
+        self.assertNotIn("(ausente)", text)
+
+
 class FailureTests(unittest.TestCase):
     def test_a_model_failure_is_explained_without_a_traceback_and_hands_over_to_a_person(self):
         def failing(_profile):

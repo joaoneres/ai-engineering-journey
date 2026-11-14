@@ -9,7 +9,9 @@ listed in the section "Required fields". Extract only those fields.
 """
 constraints = [
   "Extract ONLY what is written in the message or already stored in the conversation memory.",
-  "Copy values as the user wrote them. Do not convert relative dates such as \"sexta\" or \"ontem\" into calendar dates.",
+  "Copy values EXACTLY as the user wrote them: do not rephrase, conjugate or abbreviate. If the user wrote \"caminhão quebrou\", the value is \"caminhão quebrou\", not \"caminhão quebrado\". If you must rephrase, use origin \"inferred\".",
+  "Do not convert relative dates such as \"sexta\" or \"ontem\" into calendar dates.",
+  "A field can only have the origin informed, inferred or absent. A value already stored in <memory> is repeated with its original origin and quote; never use base or memory as the origin of a field.",
   "A field that does not appear gets value null, quote null and origin \"absent\".",
   "Every value that is present must carry the exact quote from the message that supports it.",
   "Use origin \"inferred\" only for a probable conclusion, and then keep the quote that motivates it.",

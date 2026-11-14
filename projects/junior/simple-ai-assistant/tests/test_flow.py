@@ -223,6 +223,17 @@ class DisclosureFlowTests(unittest.TestCase):
         self.assertIn("Rua das Flores, 123", result.speech)
 
 
+class DriverConclusionTests(unittest.TestCase):
+    def test_a_driver_case_cannot_end_with_a_plain_hand_off(self):
+        scenario = load_scenario("driver")
+        understand, respond = scenario.turns[0].model
+        handing_off = {**respond, "next_action": "hand_off_to_team"}
+        _, model, result = run("driver", scenario.turns[0].user, [understand, handing_off, respond])
+        self.assertIsNone(result.failure)
+        self.assertEqual(result.next_action, "escalate_to_human")
+        self.assertIn("must conclude with 'escalate_to_human'", model.calls[2][1])
+
+
 class EscalationTests(unittest.TestCase):
     def test_after_three_rejected_answers_the_turn_escalates_to_a_person(self):
         wrong = customer_respond(speech="Seu pacote ABC123 chega em 22/11/2026. Qual é o seu nome?")

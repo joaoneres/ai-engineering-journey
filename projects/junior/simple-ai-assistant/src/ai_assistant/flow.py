@@ -125,6 +125,7 @@ class Flow:
                     intent=state.intent or "",
                     missing=missing,
                     hidden_fields=profile.hidden_fields,
+                    conclude_with=profile.conclude_with,
                 )
             ),
         )

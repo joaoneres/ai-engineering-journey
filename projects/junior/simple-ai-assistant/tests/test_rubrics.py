@@ -178,6 +178,15 @@ class FalseActionTests(unittest.TestCase):
         self.assertTrue(check_false_actions("Registrei o aviso de atraso.", "speech"))
         self.assertTrue(check_false_actions("Cancelei a entrega.", "speech"))
 
+    def test_other_first_person_claims_are_refused_too(self):
+        for claim in (
+            "Anotei a entrega.",
+            "Adicionei o aviso.",
+            "Inseri os dados.",
+            "Anexei o comprovante.",
+        ):
+            self.assertTrue(check_false_actions(claim, "speech"), claim)
+
     def test_preparing_a_record_is_fine(self):
         self.assertEqual(check_false_actions("Preparei um registro para a equipe.", "speech"), [])
 
@@ -199,6 +208,15 @@ class NextActionTests(unittest.TestCase):
     def test_does_not_ask_when_nothing_is_missing(self):
         self.assertTrue(check_next_action("ask_missing_information", "delivery", ()))
         self.assertEqual(check_next_action("ask_missing_information", "unclear", ()), [])
+
+    def test_a_profile_that_must_conclude_by_escalating_cannot_hand_off(self):
+        errors = check_next_action("hand_off_to_team", "address", (), "escalate_to_human")
+        self.assertTrue(any("must conclude with 'escalate_to_human'" in error for error in errors))
+        self.assertTrue(check_next_action("close", "address", (), "escalate_to_human"))
+        self.assertEqual(
+            check_next_action("escalate_to_human", "address", (), "escalate_to_human"), []
+        )
+        self.assertEqual(check_next_action("hand_off_to_team", "address", ()), [])
 
     def test_asking_for_what_is_missing_is_fine(self):
         self.assertEqual(check_next_action("ask_missing_information", "delivery", ("code",)), [])
