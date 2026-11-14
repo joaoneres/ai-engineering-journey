@@ -61,7 +61,8 @@ class PublishTests(unittest.TestCase):
 
     def test_publishes_then_skips_the_repeat(self):
         self.assertEqual(self.run_publish(), 0)
-        entry = self.registry / "homolog" / "homolog-1.0.0-aaaaaaa"
+        manifest = json.loads((self.dist / "manifest.json").read_text(encoding="utf-8"))
+        entry = self.registry / "homolog" / publish.publication_id(manifest, "homolog")
         published = json.loads((entry / "manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(published["status"], "published")
         self.assertIsNotNone(published["published_at"])
