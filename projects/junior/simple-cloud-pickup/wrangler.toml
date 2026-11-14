@@ -1,0 +1,14 @@
+name = "simple-cloud-pickup"
+main = "src/index.ts"
+compatibility_date = "2026-11-14"
+
+# Non-secret configuration. The R2 credential is a platform binding, not a key in this file.
+[vars]
+OBJECT_KEY = "pickups.json"
+
+# Create the bucket once, before the first deploy:
+#   npx wrangler r2 bucket create filafacil-pickups --location enam
+# The location hint lives on the bucket. It is not repeated here.
+[[r2_buckets]]
+binding = "PICKUPS"
+bucket_name = "filafacil-pickups"
