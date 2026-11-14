@@ -1,0 +1,61 @@
+{
+  "profile": "driver",
+  "description": "A driver reports an address problem; the assistant standardizes it and hands it to a person.",
+  "turns": [
+    {
+      "user": "ABC123, não acho o número 123 da Rua das Flores, o portão ali é 125",
+      "model": [
+        {
+          "intent": "address",
+          "fields": {
+            "code": {
+              "value": "ABC123",
+              "quote": "ABC123",
+              "origin": "informed"
+            },
+            "problem": {
+              "value": "não acho o número 123 da Rua das Flores",
+              "quote": "não acho o número 123 da Rua das Flores",
+              "origin": "informed"
+            },
+            "reported_address": {
+              "value": "o portão ali é 125",
+              "quote": "o portão ali é 125",
+              "origin": "informed"
+            }
+          }
+        },
+        {
+          "speech": "Preparei o registro do problema de endereço do pacote ABC123. Endereço cadastrado: Rua das Flores, 123. Você informou: o portão ali é 125. Não vou alterar o endereço: o caso foi encaminhado ao atendimento humano, que vai confirmar com o cliente.",
+          "facts": [
+            {
+              "field": "address",
+              "value": "Rua das Flores, 123",
+              "origin": "base"
+            },
+            {
+              "field": "code",
+              "value": "ABC123",
+              "origin": "informed"
+            }
+          ],
+          "next_action": "escalate_to_human",
+          "record": {
+            "code": {
+              "value": "ABC123",
+              "origin": "informed"
+            },
+            "problem": {
+              "value": "não acho o número 123 da Rua das Flores",
+              "origin": "informed"
+            },
+            "reported_address": {
+              "value": "o portão ali é 125",
+              "origin": "informed"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

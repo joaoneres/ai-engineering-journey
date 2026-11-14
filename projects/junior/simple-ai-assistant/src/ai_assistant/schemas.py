@@ -128,28 +128,31 @@ def _output_spec(
     return specs[name]
 
 
-def _stage_errors(
-    output: object, library: Library, profile: Profile, stage: str, base_keys: tuple[str, ...]
-) -> list[str]:
-    intents = (*profile.intents, UNCLEAR_INTENT)
-    names = list(base_keys)
+def stage_keys(library: Library, profile: Profile, stage: str) -> tuple[str, ...]:
+    """Top-level keys of a stage output: the base keys plus what each task of the profile adds."""
+    names = list(RESPOND_BASE_KEYS) if stage == "respond" else []
     for prompt in library.tasks_for(profile.id, stage):
-        names += [field for field in prompt.output_fields if field not in names]
+        names += [name for name in prompt.output_fields if name not in names]
+    return tuple(names)
+
+
+def _stage_errors(output: object, library: Library, profile: Profile, stage: str) -> list[str]:
+    intents = (*profile.intents, UNCLEAR_INTENT)
     keys = {
         name: _output_spec(name, library.vocabulary, intents, profile.required_fields)
-        for name in names
+        for name in stage_keys(library, profile, stage)
     }
     return validate(output, _object(keys), "output")
 
 
 def understand_errors(output: object, library: Library, profile: Profile) -> list[str]:
     """Structure problems of an `understand` answer for this profile."""
-    return _stage_errors(output, library, profile, "understand", ())
+    return _stage_errors(output, library, profile, "understand")
 
 
 def respond_errors(output: object, library: Library, profile: Profile) -> list[str]:
     """Structure problems of a `respond` answer for this profile."""
-    return _stage_errors(output, library, profile, "respond", RESPOND_BASE_KEYS)
+    return _stage_errors(output, library, profile, "respond")
 
 
 def example_errors(

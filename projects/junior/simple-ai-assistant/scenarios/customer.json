@@ -1,0 +1,83 @@
+{
+  "profile": "customer",
+  "description": "A customer asks about a delayed delivery and gives their name when asked.",
+  "turns": [
+    {
+      "user": "meu pacote ABC123 não chegou",
+      "model": [
+        {
+          "intent": "delivery",
+          "fields": {
+            "code": {
+              "value": "ABC123",
+              "quote": "pacote ABC123",
+              "origin": "informed"
+            },
+            "customer_name": {
+              "value": null,
+              "quote": null,
+              "origin": "absent"
+            }
+          }
+        },
+        {
+          "speech": "Localizei o pacote ABC123: está em rota, com previsão de entrega para 20/11/2026. Para preparar o aviso de atraso para a equipe, qual é o seu nome?",
+          "facts": [
+            {
+              "field": "status",
+              "value": "in_transit",
+              "origin": "base"
+            },
+            {
+              "field": "deadline",
+              "value": "2026-11-20",
+              "origin": "base"
+            }
+          ],
+          "next_action": "ask_missing_information",
+          "internal_note": {
+            "priority": "medium",
+            "priority_origin": "inferred",
+            "text": "Entrega ABC123 em rota com previsão para 20/11/2026; o cliente relata que o pacote não chegou. Prioridade média (inferida)."
+          }
+        }
+      ]
+    },
+    {
+      "user": "Maria Souza, sim",
+      "model": [
+        {
+          "intent": "delivery",
+          "fields": {
+            "code": {
+              "value": "ABC123",
+              "quote": "pacote ABC123",
+              "origin": "informed"
+            },
+            "customer_name": {
+              "value": "Maria Souza",
+              "quote": "Maria Souza",
+              "origin": "informed"
+            }
+          }
+        },
+        {
+          "speech": "Obrigada, Maria. Preparei o aviso de atraso do pacote ABC123 para a equipe, que vai acompanhar o caso.",
+          "facts": [
+            {
+              "field": "code",
+              "value": "ABC123",
+              "origin": "informed"
+            }
+          ],
+          "next_action": "hand_off_to_team",
+          "internal_note": {
+            "priority": "medium",
+            "priority_origin": "inferred",
+            "text": "Aviso de atraso da entrega ABC123 para Maria Souza. Previsão: 20/11/2026. Prioridade média (inferida)."
+          }
+        }
+      ]
+    }
+  ]
+}

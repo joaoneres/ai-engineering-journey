@@ -1,0 +1,58 @@
+{
+  "profile": "operator",
+  "description": "An operator reports a breakdown on the road in free text; the assistant summarizes it.",
+  "turns": [
+    {
+      "user": "XYZ789 caminhão quebrou na BR-116 km 80, 3 pacotes atrasados, motorista Pedro avisou 14h",
+      "model": [
+        {
+          "intent": "occurrence",
+          "fields": {
+            "code": {
+              "value": "XYZ789",
+              "quote": "XYZ789",
+              "origin": "informed"
+            },
+            "description": {
+              "value": "caminhão quebrou",
+              "quote": "caminhão quebrou",
+              "origin": "informed"
+            },
+            "location": {
+              "value": "BR-116 km 80",
+              "quote": "BR-116 km 80",
+              "origin": "informed"
+            },
+            "time": {
+              "value": "14h",
+              "quote": "avisou 14h",
+              "origin": "informed"
+            }
+          }
+        },
+        {
+          "speech": "Resumo da ocorrência da entrega XYZ789: o caminhão quebrou na BR-116 km 80, com 3 pacotes atrasados, e o motorista Pedro avisou às 14h. O responsável pelo reparo e a nova previsão não foram informados.",
+          "facts": [
+            {
+              "field": "code",
+              "value": "XYZ789",
+              "origin": "informed"
+            },
+            {
+              "field": "status",
+              "value": "in_transit",
+              "origin": "base"
+            }
+          ],
+          "next_action": "hand_off_to_team",
+          "summary": "O caminhão da entrega XYZ789 quebrou na BR-116, km 80. Há 3 pacotes atrasados. O motorista Pedro avisou às 14h. Não foi informado o responsável pelo reparo nem uma nova previsão.",
+          "internal_note": {
+            "priority": "high",
+            "priority_origin": "inferred",
+            "text": "XYZ789: caminhão quebrado na BR-116, km 80, com 3 pacotes atrasados, aviso do motorista Pedro às 14h. Prioridade alta (inferida: pacotes parados em rota). Responsável pelo reparo: não informado."
+          }
+        }
+      ]
+    }
+  ]
+}
