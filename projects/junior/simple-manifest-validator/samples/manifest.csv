@@ -1,0 +1,3 @@
+package,route,vehicle,responsible,status
+PKG-1,North,Van 02,Ana Souza,pending
+PKG-2,South,Truck 7,Bruno Lima,in transit

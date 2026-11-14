@@ -1,0 +1,16 @@
+[
+  {
+    "package": "PKG-1",
+    "route": "North",
+    "vehicle": "Van 02",
+    "responsible": "Ana Souza",
+    "status": "pending"
+  },
+  {
+    "package": "PKG-2",
+    "route": "South",
+    "vehicle": "Truck 7",
+    "responsible": "Bruno Lima",
+    "status": "in transit"
+  }
+]

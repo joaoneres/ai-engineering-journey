@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "simple-manifest-validator"
+version = "1.0.0"
+description = "FilaFácil Logística: cargo manifest validator, checked and packaged by a small CI/CD pipeline."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "João Vitor" }]
+dependencies = []
+
+[project.scripts]
+simple-manifest = "simple_manifest_validator.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+# E/W: pycodestyle, F: pyflakes, I: import order, B: bugbear, UP: pyupgrade, SIM: simplifications
+select = ["E", "W", "F", "I", "B", "UP", "SIM"]

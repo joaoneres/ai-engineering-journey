@@ -1,0 +1,130 @@
+# Pipeline for projects/junior/simple-manifest-validator
+# This file lives at the repository root because GitHub only runs workflows from this folder.
+# Documentation: projects/junior/simple-manifest-validator/PIPELINE.md and README.md
+name: simple-manifest-validator
+
+on:
+  push:
+    branches: [main, "feature/**", "fix/**", "chore/**", "docs/**", "ci/**"]
+    tags: ["simple-manifest-v*.*.*"]
+    paths:
+      - "projects/junior/simple-manifest-validator/**"
+      - ".github/workflows/simple-manifest-validator.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "projects/junior/simple-manifest-validator/**"
+      - ".github/workflows/simple-manifest-validator.yml"
+  workflow_dispatch:
+
+# Least privilege: read-only by default. Only Deploy asks for write, to create the Release.
+permissions:
+  contents: read
+
+env:
+  PROJECT_DIR: projects/junior/simple-manifest-validator
+
+defaults:
+  run:
+    working-directory: projects/junior/simple-manifest-validator
+
+concurrency:
+  group: simple-manifest-validator-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  integration:
+    name: simple-manifest-validator · Integration
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python 3.11
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: projects/junior/simple-manifest-validator/requirements-dev.txt
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Check formatting
+        run: python -m ruff format --check .
+      - name: Lint
+        run: python -m ruff check .
+      - name: Static check
+        run: python -m compileall -q src tests scripts
+      - name: Install the package
+        run: python -m pip install -e .
+      - name: Unit tests
+        run: python -m unittest discover -s tests -t . -v
+      - name: Run the CLI on the JSON sample
+        run: simple-manifest samples/manifest.json
+      - name: Run the CLI on the CSV sample
+        run: simple-manifest samples/manifest.csv
+
+  deploy:
+    name: simple-manifest-validator · Deploy
+    needs: integration
+    # Publish on main and on a version tag. Pull requests only run Integration.
+    if: >-
+      github.event_name != 'pull_request' &&
+      (github.ref_type == 'tag' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python 3.11
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: projects/junior/simple-manifest-validator/requirements-dev.txt
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Install the package
+        run: python -m pip install -e .
+      - name: Check the version
+        id: version
+        run: |
+          python scripts/check_version.py
+          version=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
+          echo "artifact_name=simple-manifest-${version}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      - name: Build the wheel and sdist
+        run: python -m build
+      - name: Check the package metadata
+        run: python -m twine check --strict dist/*.whl dist/*.tar.gz
+      - name: Write the sample validation report
+        run: simple-manifest samples/manifest.json > dist/validation-report.txt
+      - name: Add the report to the run summary
+        run: |
+          {
+            echo "### Sample validation"
+            echo '```'
+            cat dist/validation-report.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.version.outputs.artifact_name }}
+          path: ${{ env.PROJECT_DIR }}/dist/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publish the GitHub Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists; nothing new was created."
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* \
+              --title "$GITHUB_REF_NAME" \
+              --notes "Cargo manifest validator ${GITHUB_REF_NAME}. The archive contains the wheel, the sdist, and validation-report.txt from the sample manifest."
+          fi

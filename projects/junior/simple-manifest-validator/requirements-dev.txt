@@ -1,0 +1,4 @@
+# Development and CI tools (pinned so every run uses the same versions)
+ruff==0.17.5
+build==1.6.1
+twine==7.0.0
