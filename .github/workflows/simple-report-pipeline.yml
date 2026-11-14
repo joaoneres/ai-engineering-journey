@@ -1,6 +1,13 @@
 # Pipeline do projeto: projects/junior/simple-report-pipeline
 # Este workflow mora na raiz do repositório porque o GitHub só executa arquivos desta pasta.
 # Documentação: projects/junior/simple-report-pipeline/PIPELINE.md e README.md
+#
+# ATENÇÃO (uso em produção): este workflow só REPORTA os checks (Qualidade, Testes e Build).
+# Ele NÃO impede o merge de um PR com a pipeline vermelha. Quem impede é a proteção de branch do
+# repositório, que não é configurada aqui porque este repositório é um agregado de projetos de
+# estudo e a regra valeria para todos eles. SE este projeto for para produção ou for usado de
+# forma produtiva, configure a proteção da `main` (Settings > Branches > Require status checks,
+# selecionando os 4 checks acima). Passo a passo: README.md, seção 11.
 name: simple-report-pipeline
 
 on:
