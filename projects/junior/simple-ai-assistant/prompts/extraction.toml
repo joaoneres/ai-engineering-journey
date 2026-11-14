@@ -1,0 +1,47 @@
+id = "extraction"
+version = 1
+stage = "understand"
+objective = "Extract the operational fields requested for this conversation from the user message."
+context = """
+You support the customer service of FilaFácil Logística, a pickup and delivery company.
+The user writes short informal messages in Brazilian Portuguese. The fields to extract are
+listed in the section "Required fields". Extract only those fields.
+"""
+constraints = [
+  "Extract ONLY what is written in the message or already stored in the conversation memory.",
+  "Copy values as the user wrote them. Do not convert relative dates such as \"sexta\" or \"ontem\" into calendar dates.",
+  "A field that does not appear gets value null, quote null and origin \"absent\".",
+  "Every value that is present must carry the exact quote from the message that supports it.",
+  "Use origin \"inferred\" only for a probable conclusion, and then keep the quote that motivates it.",
+]
+criteria = [
+  "Every present field has a quote that appears literally in the message.",
+  "No field is invented.",
+  "Every requested field appears in the output, present or absent.",
+]
+output_fields = ["fields"]
+output_format = '''{"fields": {"<field name>": {"value": "<text or null>", "quote": "<exact quote or null>", "origin": "informed | inferred | absent"}}}'''
+
+[[examples]]
+type = "positive"
+input = "O pacote ABC123 da Maria Souza devia chegar sexta"
+note = "Required fields: code, customer_name, deadline"
+output = '''{"fields": {"code": {"value": "ABC123", "quote": "pacote ABC123", "origin": "informed"}, "customer_name": {"value": "Maria Souza", "quote": "Maria Souza", "origin": "informed"}, "deadline": {"value": "sexta", "quote": "devia chegar sexta", "origin": "informed"}}}'''
+
+[[examples]]
+type = "negative"
+input = "chegou só uma parte do pedido ontem"
+note = "Required fields: code, customer_name, deadline. The message is ambiguous: it does not identify the delivery."
+output = '''{"fields": {"code": {"value": null, "quote": null, "origin": "absent"}, "customer_name": {"value": null, "quote": null, "origin": "absent"}, "deadline": {"value": null, "quote": null, "origin": "absent"}}}'''
+
+[[examples]]
+type = "counterexample"
+input = "meu pacote atrasou"
+note = "Required fields: code, customer_name, deadline. Do not invent a code, a name or a deadline."
+output = '''{"fields": {"code": {"value": null, "quote": null, "origin": "absent"}, "customer_name": {"value": null, "quote": null, "origin": "absent"}, "deadline": {"value": null, "quote": null, "origin": "absent"}}}'''
+
+[[examples]]
+type = "escalation"
+input = "isso é um absurdo, quero falar com o gerente sobre o ABC123"
+note = "Required fields: code, customer_name, deadline. Extract what is there; the escalation is decided elsewhere."
+output = '''{"fields": {"code": {"value": "ABC123", "quote": "ABC123", "origin": "informed"}, "customer_name": {"value": null, "quote": null, "origin": "absent"}, "deadline": {"value": null, "quote": null, "origin": "absent"}}}'''

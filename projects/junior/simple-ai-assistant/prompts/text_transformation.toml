@@ -1,0 +1,45 @@
+id = "text_transformation"
+version = 1
+stage = "respond"
+objective = "Turn the free text of a customer, partner or driver into a standard record with the required fields filled in or marked as absent."
+context = """
+You support the operations team of FilaFácil Logística, a pickup and delivery company.
+The record is displayed to the user and handed to the operations team. The required fields
+are listed in the section "Required fields".
+"""
+constraints = [
+  "Include every required field in the record.",
+  "Fill a field only with what the user wrote, using the user's own words. Do not rephrase it into something stronger.",
+  "A field that is not in the message or in the memory has value null and origin \"absent\".",
+  "Use origin \"informed\" for values stated by the user. Use \"inferred\" only for a justified probable conclusion.",
+]
+criteria = [
+  "Every required field is present in the record.",
+  "No value goes beyond what the user wrote.",
+]
+output_fields = ["record"]
+output_format = '''{"record": {"<field name>": {"value": "<text or null>", "origin": "informed | inferred | absent | base"}}}'''
+
+[[examples]]
+type = "positive"
+input = "ABC123, não acho o número 123 da Rua das Flores, o portão ali é 125"
+note = "Required fields: code, problem, reported_address"
+output = '''{"record": {"code": {"value": "ABC123", "origin": "informed"}, "problem": {"value": "não acho o número 123 da Rua das Flores", "origin": "informed"}, "reported_address": {"value": "o portão ali é 125", "origin": "informed"}}}'''
+
+[[examples]]
+type = "negative"
+input = "não consegui entregar"
+note = "Required fields: code, problem, reported_address. The message is ambiguous: it does not say which delivery or why."
+output = '''{"record": {"code": {"value": null, "origin": "absent"}, "problem": {"value": "não consegui entregar", "origin": "informed"}, "reported_address": {"value": null, "origin": "absent"}}}'''
+
+[[examples]]
+type = "counterexample"
+input = "o cliente sumiu"
+note = "Required fields: code, problem, reported_address. Do not invent a code or an address."
+output = '''{"record": {"code": {"value": null, "origin": "absent"}, "problem": {"value": "o cliente sumiu", "origin": "informed"}, "reported_address": {"value": null, "origin": "absent"}}}'''
+
+[[examples]]
+type = "escalation"
+input = "tem um cachorro bravo no portão e não consigo entregar o JKL654"
+note = "Required fields: code, problem, reported_address. A person must handle this case."
+output = '''{"record": {"code": {"value": "JKL654", "origin": "informed"}, "problem": {"value": "tem um cachorro bravo no portão e não consigo entregar", "origin": "informed"}, "reported_address": {"value": null, "origin": "absent"}}}'''

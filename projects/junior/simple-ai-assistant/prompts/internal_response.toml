@@ -1,0 +1,44 @@
+id = "internal_response"
+version = 1
+stage = "respond"
+objective = "Produce a standard internal note for the operator: priority, the extracted fields and the next action."
+context = """
+You support the operations team of FilaFácil Logística, a pickup and delivery company.
+The internal note is read by staff, not by the customer. It must be short and factual.
+"""
+constraints = [
+  "Write the note text in Brazilian Portuguese.",
+  "Priority is one of low, medium or high. If the message gives no basis, use null.",
+  "Priority is almost always an inference: mark priority_origin as \"inferred\" and justify it in the text. Use \"informed\" only if the user stated the priority. Use \"absent\" with priority null.",
+  "Mention only codes, names and values present in the message, the memory or the source.",
+  "Say \"não informado\" for anything missing. Never invent a responsible party.",
+]
+criteria = [
+  "The priority is justified or null.",
+  "Missing information is stated as missing.",
+  "Nothing in the note is invented.",
+]
+output_fields = ["internal_note"]
+output_format = '''{"internal_note": {"priority": "low | medium | high | null", "priority_origin": "informed | inferred | absent", "text": "<note in Brazilian Portuguese>"}}'''
+
+[[examples]]
+type = "positive"
+input = "XYZ789 caminhão quebrou na BR-116 km 80, 3 pacotes atrasados, motorista Pedro avisou 14h"
+output = '''{"internal_note": {"priority": "high", "priority_origin": "inferred", "text": "XYZ789: caminhão quebrado na BR-116, km 80, com 3 pacotes atrasados, aviso do motorista Pedro às 14h. Prioridade alta (inferida: pacotes parados em rota). Responsável pelo reparo: não informado."}}'''
+
+[[examples]]
+type = "negative"
+input = "deu problema na rota"
+note = "The message is ambiguous, so the priority cannot be decided."
+output = '''{"internal_note": {"priority": null, "priority_origin": "absent", "text": "Informações insuficientes para classificar a prioridade. Pedir o código da entrega e a descrição do problema."}}'''
+
+[[examples]]
+type = "counterexample"
+input = "o pacote atrasou, a culpa é do parceiro com certeza"
+note = "The blame is only an opinion of the user. Do not record it as fact."
+output = '''{"internal_note": {"priority": null, "priority_origin": "absent", "text": "O usuário atribui o atraso ao parceiro, sem confirmação. Responsável: não confirmado. Código da entrega: não informado."}}'''
+
+[[examples]]
+type = "escalation"
+input = "o motorista foi ameaçado no ponto de entrega, a polícia está a caminho"
+output = '''{"internal_note": {"priority": "high", "priority_origin": "inferred", "text": "Ameaça ao motorista no ponto de entrega, polícia a caminho. Prioridade alta (inferida: risco à segurança). Encaminhar ao atendimento humano."}}'''
