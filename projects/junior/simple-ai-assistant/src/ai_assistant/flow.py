@@ -131,7 +131,7 @@ class Flow:
         )
 
         next_action = responded["next_action"]
-        newly_asked = missing if next_action == "ask_missing_information" else ()
+        newly_asked = tuple(responded["asking"]) if next_action == "ask_missing_information" else ()
         extras = {key: responded[key] for key in EXTRA_KEYS if key in responded}
         state = memory.with_turn(
             state, message, responded["speech"], next_action, extras, newly_asked

@@ -26,13 +26,16 @@ INTENT_MEANINGS = {
 RESPOND_BASE_FORMAT = (
     '{"speech": "<reply to the user in Brazilian Portuguese>", '
     '"facts": [{"field": "<field name>", "value": "<text>", '
-    '"origin": "informed | inferred | base"}], '
+    '"origin": "informed | inferred | base | absent"}], '
+    '"asking": ["<required field names your question is about>"], '
     '"next_action": "<one allowed next action>"}'
 )
 
 CONVERSATION_RULES = (
-    "Read memory.missing. If it is not empty, ask ONE short question about those fields, in "
-    "Brazilian Portuguese, and set next_action to ask_missing_information.",
+    "Read memory.missing. If it is not empty, ask ONE short question, in Brazilian Portuguese, "
+    "that covers ALL those fields, ending with a question mark. Set next_action to "
+    "ask_missing_information and list those field names in asking. Otherwise asking must be an "
+    "empty list.",
     "If memory.missing is empty, do not ask for more information. Answer from the source with "
     "provide_information, or finish with hand_off_to_team when the case is complete.",
     "Use escalate_to_human when the intent is human_escalation or when a person must handle "
@@ -41,6 +44,9 @@ CONVERSATION_RULES = (
     "them. Say that they are unknown and never ask for them again.",
     "If the source says found is false, say that you could not find the delivery and ask the "
     "user to check the code. Never use the origin base in that case.",
+    "In facts list only values that exist. For a field that is missing or unknown, leave it out "
+    'or use origin absent with value null: never write placeholder text such as "unknown" or '
+    "its Portuguese equivalent as a value.",
     "Put in facts every value you mention that came from the source, with origin base, the "
     "source field name and the exact source value. A fact with origin informed must copy the "
     "user's words exactly.",

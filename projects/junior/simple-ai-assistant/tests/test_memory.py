@@ -48,6 +48,27 @@ class MemoryTests(unittest.TestCase):
         second = memory.with_understanding(first, "delivery", {"code": item("XYZ789", "XYZ789")})
         self.assertEqual(second.field("code").value, "XYZ789")
 
+    def test_a_vague_message_does_not_erase_a_known_intent(self):
+        first = memory.with_understanding(self.state, "occurrence", {"code": ABSENT})
+        second = memory.with_understanding(first, "unclear", {"code": item("JKL654", "JKL654")})
+        self.assertEqual(second.intent, "occurrence")
+
+    def test_unclear_is_kept_when_nothing_better_is_known(self):
+        state = memory.with_understanding(self.state, "unclear", {"code": ABSENT})
+        self.assertEqual(state.intent, "unclear")
+
+    def test_a_specific_intent_replaces_unclear_and_a_new_specific_one_replaces_the_old(self):
+        state = memory.with_understanding(self.state, "unclear", {"code": ABSENT})
+        state = memory.with_understanding(state, "delivery", {"code": ABSENT})
+        self.assertEqual(state.intent, "delivery")
+        state = memory.with_understanding(state, "human_escalation", {"code": ABSENT})
+        self.assertEqual(state.intent, "human_escalation")
+
+    def test_escalating_records_the_escalation_as_the_last_action(self):
+        state = memory.with_turn(self.state, "a", "b", "ask_missing_information", {})
+        self.assertEqual(memory.escalated(state).last_next_action, "escalate_to_human")
+        self.assertTrue(memory.escalated(state).escalated)
+
     def test_missing_fields_are_the_required_ones_without_a_value(self):
         state = memory.with_understanding(
             self.state, "delivery", {"code": item("ABC123", "ABC123"), "customer_name": ABSENT}

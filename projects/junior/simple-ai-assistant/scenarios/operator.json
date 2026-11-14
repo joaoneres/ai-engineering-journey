@@ -44,6 +44,7 @@
               "origin": "base"
             }
           ],
+          "asking": [],
           "next_action": "hand_off_to_team",
           "summary": "O caminhão da entrega XYZ789 quebrou na BR-116, km 80. Há 3 pacotes atrasados. O motorista Pedro avisou às 14h. Não foi informado o responsável pelo reparo nem uma nova previsão.",
           "internal_note": {

@@ -34,6 +34,9 @@
               "origin": "base"
             }
           ],
+          "asking": [
+            "customer_name"
+          ],
           "next_action": "ask_missing_information",
           "internal_note": {
             "priority": "medium",
@@ -70,6 +73,7 @@
               "origin": "informed"
             }
           ],
+          "asking": [],
           "next_action": "hand_off_to_team",
           "internal_note": {
             "priority": "medium",

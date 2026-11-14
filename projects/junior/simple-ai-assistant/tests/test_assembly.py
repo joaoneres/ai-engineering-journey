@@ -37,6 +37,8 @@ class SystemPromptTests(unittest.TestCase):
         respond = assembly.build_system(LIBRARY, CUSTOMER, assembly.RESPOND)
         self.assertIn("never write", respond)
         self.assertIn("Preparei o registro para a equipe", respond)
+        self.assertIn("asking", respond)
+        self.assertIn("covers ALL those fields", respond)
 
     def test_prompts_name_the_required_fields_and_the_vocabulary(self):
         prompt = assembly.build_system(LIBRARY, OPERATOR, assembly.RESPOND)

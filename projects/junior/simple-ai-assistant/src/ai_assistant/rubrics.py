@@ -179,7 +179,12 @@ def check_facts(facts: list[dict], evidence: Evidence) -> list[str]:
     errors = []
     for index, fact in enumerate(facts):
         where = f"facts[{index}] ({fact['field']})"
-        if fact["origin"] == "base":
+        if (fact["origin"] == "absent") != (fact["value"] is None):
+            errors.append(
+                f"{where}: the value is null if and only if the origin is 'absent'; "
+                "never write placeholder text such as 'not informed' as a value"
+            )
+        elif fact["origin"] == "base":
             errors += _check_base_fact(where, fact, evidence.source)
         elif fact["origin"] == "informed" and not _contains(evidence.user_texts(), fact["value"]):
             errors.append(
@@ -252,6 +257,27 @@ def check_disclosure(text: str, evidence: Evidence, hidden_fields: tuple[str, ..
     return errors
 
 
+def check_asking(
+    asking: list[str], speech: str, action: str, intent: str, missing: tuple[str, ...]
+) -> list[str]:
+    """`asking` is what the assistant says it asks about; the memory records exactly that."""
+    if action != "ask_missing_information":
+        if asking:
+            return ["asking: must be an empty list unless next_action is ask_missing_information"]
+        return []
+    errors = []
+    if not asking and not (intent == UNCLEAR and not missing):
+        errors.append("asking: list the missing fields that your question is about")
+    not_missing = [name for name in asking if name not in missing]
+    if not_missing:
+        errors.append(
+            f"asking: {not_missing} are not missing fields (the missing fields are {list(missing)})"
+        )
+    if "?" not in speech:
+        errors.append("speech: when asking for information the reply must contain a question")
+    return errors
+
+
 def check_respond(
     output: dict,
     evidence: Evidence,
@@ -264,6 +290,9 @@ def check_respond(
     """Check a `respond` answer: facts, texts shown to people, extras and the next action."""
     errors = check_facts(output["facts"], evidence)
     errors += check_disclosure(output["speech"], evidence, hidden_fields)
+    errors += check_asking(
+        output["asking"], output["speech"], output["next_action"], intent, missing
+    )
     for label in ("speech", "summary"):
         if label in output:
             errors += check_entities(output[label], evidence, label)
