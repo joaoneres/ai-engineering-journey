@@ -149,3 +149,69 @@ jobs:
           path: ${{ env.PROJECT_DIR }}/${{ env.ARTIFACT_DIR }}/
           if-no-files-found: error
           retention-days: 30
+
+  publicar:
+    name: simple-report-pipeline · Publicar (${{ needs.build.outputs.environment }})
+    needs: build
+    # Só publica em: tag (prod), main (homolog) ou execução manual (dev em qualquer branch;
+    # homolog/prod apenas a partir da main ou de uma tag). Nunca em pull request.
+    if: >-
+      github.event_name != 'pull_request' && (
+        github.ref_type == 'tag' ||
+        github.ref == 'refs/heads/main' ||
+        (github.event_name == 'workflow_dispatch' && needs.build.outputs.environment == 'dev')
+      )
+    runs-on: ubuntu-24.04
+    environment: ${{ needs.build.outputs.environment }}
+    # Reexecuções e disparos manuais do mesmo ambiente entram em fila, sem publicar em paralelo.
+    concurrency:
+      group: simple-report-pipeline-publicar-${{ needs.build.outputs.environment }}
+      cancel-in-progress: false
+    # Único job com permissão de escrita: criar a Release; actions:read serve para checar duplicidade.
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.11"
+      - name: Baixar o artefato do build
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ needs.build.outputs.artifact_name }}
+          path: ${{ env.PROJECT_DIR }}/${{ env.ARTIFACT_DIR }}
+      - name: Publicar (checksums, secrets, duplicidade, Release)
+        id: publicar
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+          TARGET_ENVIRONMENT: ${{ needs.build.outputs.environment }}
+        run: python scripts/publish.py --environment "$TARGET_ENVIRONMENT" --destination github
+      - name: Guardar a publicação (registry simulado)
+        if: steps.publicar.outputs.already_published == 'false'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: registry-${{ steps.publicar.outputs.publication_id }}
+          path: ${{ steps.publicar.outputs.registry_dir }}
+          if-no-files-found: error
+      - name: Resumo da publicação
+        env:
+          ALREADY_PUBLISHED: ${{ steps.publicar.outputs.already_published }}
+          PUBLICATION_ID: ${{ steps.publicar.outputs.publication_id }}
+          REGISTRY_DIR: ${{ steps.publicar.outputs.registry_dir }}
+        run: |
+          {
+            echo "### Publicação: ${PUBLICATION_ID}"
+            if [ "$ALREADY_PUBLISHED" = "true" ]; then
+              echo "Já publicado anteriormente; nada foi duplicado."
+            else
+              echo '```json'
+              cat "${REGISTRY_DIR}/manifest.json"
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
