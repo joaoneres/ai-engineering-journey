@@ -3,6 +3,7 @@ import unittest
 from ai_assistant.library import load_library
 from ai_assistant.rubrics import (
     Evidence,
+    check_disclosure,
     check_entities,
     check_facts,
     check_false_actions,
@@ -137,6 +138,41 @@ class EntityRubricTests(unittest.TestCase):
         self.assertTrue(any("'Carla'" in error for error in errors))
 
 
+class DisclosureTests(unittest.TestCase):
+    HIDDEN = ("customer", "address")
+
+    def test_a_hidden_source_value_cannot_be_revealed_to_an_unidentified_user(self):
+        speech = "A entrega está em nome de Maria Souza, na Rua das Flores, 123."
+        errors = check_disclosure(
+            speech, evidence(message="cadê o ABC123?", source=SOURCE), self.HIDDEN
+        )
+        self.assertEqual(len(errors), 2)
+        self.assertTrue(any("'customer'" in error for error in errors))
+        self.assertTrue(any("'address'" in error for error in errors))
+
+    def test_the_value_can_be_repeated_once_the_user_said_it_first(self):
+        speech = "Obrigada, Maria Souza. Localizei o pacote."
+        ev = evidence(message="sou a Maria Souza", source=SOURCE)
+        self.assertEqual(check_disclosure(speech, ev, self.HIDDEN), [])
+
+    def test_nothing_is_hidden_when_the_profile_hides_no_field(self):
+        speech = "Endereço cadastrado: Rua das Flores, 123."
+        self.assertEqual(check_disclosure(speech, evidence(source=SOURCE), ()), [])
+
+    def test_check_respond_applies_the_disclosure_rule(self):
+        output = {
+            "speech": "Localizei o pacote ABC123, em nome de Maria Souza.",
+            "facts": [],
+            "next_action": "provide_information",
+        }
+        ev = evidence(message="cadê o ABC123?", source=SOURCE)
+        errors = check_respond(
+            output, ev, intent="delivery", missing=(), hidden_fields=("customer",)
+        )
+        self.assertTrue(any("reveals the source field 'customer'" in error for error in errors))
+        self.assertEqual(check_respond(output, ev, intent="delivery", missing=()), [])
+
+
 class FalseActionTests(unittest.TestCase):
     def test_claiming_to_register_is_refused(self):
         self.assertTrue(check_false_actions("Registrei o aviso de atraso.", "speech"))
@@ -151,10 +187,13 @@ class NextActionTests(unittest.TestCase):
         self.assertTrue(check_next_action("provide_information", "human_escalation", ()))
         self.assertEqual(check_next_action("escalate_to_human", "human_escalation", ()), [])
 
-    def test_cannot_conclude_with_missing_fields(self):
-        self.assertTrue(check_next_action("hand_off_to_team", "delivery", ("customer_name",)))
+    def test_with_missing_fields_the_only_allowed_actions_are_asking_or_escalating(self):
+        for action in ("hand_off_to_team", "close", "provide_information"):
+            errors = check_next_action(action, "delivery", ("customer_name",))
+            self.assertTrue(any("required fields are missing" in e for e in errors), action)
+        self.assertEqual(check_next_action("escalate_to_human", "delivery", ("customer_name",)), [])
         self.assertEqual(
-            check_next_action("hand_off_to_team", "delivery", ("customer_name",), True), []
+            check_next_action("ask_missing_information", "delivery", ("customer_name",)), []
         )
 
     def test_does_not_ask_when_nothing_is_missing(self):

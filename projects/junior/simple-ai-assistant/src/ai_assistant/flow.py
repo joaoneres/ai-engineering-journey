@@ -119,7 +119,13 @@ class Flow:
             ),
             lambda data: (
                 schemas.respond_errors(data, self.library, profile)
-                or rubrics.check_respond(data, evidence, intent=state.intent or "", missing=missing)
+                or rubrics.check_respond(
+                    data,
+                    evidence,
+                    intent=state.intent or "",
+                    missing=missing,
+                    hidden_fields=profile.hidden_fields,
+                )
             ),
         )
 

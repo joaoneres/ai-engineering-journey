@@ -22,7 +22,7 @@ from dataclasses import dataclass
 
 HUMAN_ESCALATION = "human_escalation"
 UNCLEAR = "unclear"
-CONCLUDING_ACTIONS = ("hand_off_to_team", "close")
+ASKING_ACTIONS = ("ask_missing_information", "escalate_to_human")
 
 CODE_PATTERN = re.compile(r"\b[A-Z]{2,5}\d{2,6}\b")
 DATE_PATTERN = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b|\b(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?\b")
@@ -219,17 +219,31 @@ def check_internal_note(note: dict, evidence: Evidence) -> list[str]:
     return errors + check_entities(note["text"], evidence, "internal_note.text")
 
 
-def check_next_action(
-    action: str, intent: str, missing: tuple[str, ...], unresolved_ok: bool = False
-) -> list[str]:
+def check_next_action(action: str, intent: str, missing: tuple[str, ...]) -> list[str]:
     """The next action must be coherent with the intent and with what is still missing."""
     if intent == HUMAN_ESCALATION and action != "escalate_to_human":
         return ["next_action: an escalation intent requires 'escalate_to_human'"]
-    if missing and not unresolved_ok and action in CONCLUDING_ACTIONS:
-        return [f"next_action: cannot conclude while required fields are missing: {list(missing)}"]
+    if missing and action not in ASKING_ACTIONS:
+        return [
+            f"next_action: required fields are missing {list(missing)}; "
+            "ask for them with ask_missing_information (or escalate_to_human) before anything else"
+        ]
     if not missing and action == "ask_missing_information" and intent != UNCLEAR:
         return ["next_action: nothing is missing, so do not ask the user for more information"]
     return []
+
+
+def check_disclosure(text: str, evidence: Evidence, hidden_fields: tuple[str, ...]) -> list[str]:
+    """Source values a profile must not reveal can only be repeated if the user said them first."""
+    errors = []
+    for name in hidden_fields:
+        value = (evidence.source or {}).get(name)
+        if value and _contains([text], value) and not _contains(evidence.user_texts(), value):
+            errors.append(
+                f"speech: reveals the source field '{name}' ({value!r}), which this user may not "
+                "see and has not provided; ask the user for it instead"
+            )
+    return errors
 
 
 def check_respond(
@@ -238,10 +252,11 @@ def check_respond(
     *,
     intent: str,
     missing: tuple[str, ...],
-    unresolved_ok: bool = False,
+    hidden_fields: tuple[str, ...] = (),
 ) -> list[str]:
     """Check a `respond` answer: facts, texts shown to people, extras and the next action."""
     errors = check_facts(output["facts"], evidence)
+    errors += check_disclosure(output["speech"], evidence, hidden_fields)
     for label in ("speech", "summary"):
         if label in output:
             errors += check_entities(output[label], evidence, label)
@@ -250,4 +265,4 @@ def check_respond(
         errors += check_internal_note(output["internal_note"], evidence)
     if "record" in output:
         errors += check_record(output["record"], evidence)
-    return errors + check_next_action(output["next_action"], intent, missing, unresolved_ok)
+    return errors + check_next_action(output["next_action"], intent, missing)

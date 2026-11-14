@@ -84,7 +84,10 @@ def _check_keys(value: dict, keys: dict[str, dict], path: str) -> list[str]:
 def parse_json(text: object) -> tuple[dict | None, list[str]]:
     """Parse the raw model answer. A blank answer is an error (JSON mode can return one)."""
     if not isinstance(text, str) or not text.strip():
-        return None, ["the response is empty; return a json object"]
+        return None, [
+            "the response is empty (it may not have been valid json); "
+            "return one valid json object, with no markdown and with quotes escaped inside strings"
+        ]
     try:
         data = json.loads(text)
     except json.JSONDecodeError as error:

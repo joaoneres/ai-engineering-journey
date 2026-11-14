@@ -67,6 +67,7 @@ class Profile:
     intents: tuple[str, ...]
     required_fields: tuple[str, ...]
     tasks: tuple[str, ...]
+    hidden_fields: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -231,6 +232,7 @@ def _load_profile(path: Path, prompts: dict[str, Prompt], vocabulary: Vocabulary
         intents=intents,
         required_fields=_text_list(data, "required_fields", where),
         tasks=tasks,
+        hidden_fields=_text_list(data, "hidden_fields", where) if "hidden_fields" in data else (),
     )
 
 
