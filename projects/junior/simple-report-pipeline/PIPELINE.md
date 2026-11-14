@@ -19,3 +19,7 @@ Qualidade ──► Testes (py 3.11 e 3.13) ──► Build ──► Publicar
 
 The full description (triggers, environments, secrets, artifact, failure diagnosis) is in the
 [README](README.md).
+
+**Important for productive use:** the workflow reports the checks but does not block merges; that
+needs branch protection on `main`, which is not set in this repository because it is an aggregate
+of study projects. If this project goes to production, configure it (README, section 11).

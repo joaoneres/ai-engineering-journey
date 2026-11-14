@@ -193,13 +193,27 @@ and [Release `simple-report-v1.0.0`](https://github.com/joaoneres/ai-engineering
 (wheel, sdist and `manifest.json` with `status: published`). Re-running that same run (attempt 2)
 logged `já publicado; nada a fazer (sem duplicar)` and created nothing new.
 
-## 11. Making the checks block merges (one-time repository setting)
+## 11. Making the checks block merges (required before any productive use)
 
-The pipeline reports the checks, but only the repository settings can *enforce* them: *Settings →
-Branches → Add rule for `main` → Require status checks* and select `simple-report-pipeline ·
-Qualidade`, `· Testes (3.11)`, `· Testes (3.13)` and `· Build`. Note that the workflow only runs for
-changes in this project, so a required check would stay pending on pull requests that touch only
-other projects; add a path-independent job or use a ruleset if that becomes a problem.
+> **Recommendation: if this project goes to production or is used in a productive way, configure
+> the branch protection below. Without it, the pipeline does not stop anyone from merging.**
+
+The requirement "block the merge if quality fails" is **not enforced in this repository**, on
+purpose: it is an aggregate of study projects and a repository-wide rule would apply to all of
+them. What this project provides is the pipeline that *reports* the checks. Only the repository
+settings can turn those checks into a block.
+
+To enforce it, in the repository that holds this project:
+
+1. *Settings → Branches → Add branch ruleset (or classic rule) for `main`*.
+2. Enable *Require a pull request before merging* and *Require status checks to pass*.
+3. Select these checks: `simple-report-pipeline · Qualidade`, `simple-report-pipeline · Testes
+   (3.11)`, `simple-report-pipeline · Testes (3.13)` and `simple-report-pipeline · Build`.
+4. Optionally restrict who can push tags `simple-report-v*` (they publish a Release).
+
+Caveat: the workflow only runs for changes in this project, so a required check stays pending on
+pull requests that touch only other projects. In a repository dedicated to this project this does
+not happen; in a shared one, add a path-independent job or use a ruleset.
 
 ## 12. Restrictions respected
 
