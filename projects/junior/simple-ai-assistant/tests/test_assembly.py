@@ -30,6 +30,14 @@ class SystemPromptTests(unittest.TestCase):
         self.assertNotIn("## Task: classification", prompt)
         self.assertNotIn("# Allowed intents", prompt)
 
+    def test_the_prompts_carry_the_lessons_learned_from_the_real_model(self):
+        understand = assembly.build_system(LIBRARY, CUSTOMER, assembly.UNDERSTAND)
+        self.assertIn("Copy values EXACTLY", understand)
+        self.assertIn("never use base or memory as the origin of a field", understand)
+        respond = assembly.build_system(LIBRARY, CUSTOMER, assembly.RESPOND)
+        self.assertIn("never write", respond)
+        self.assertIn("Preparei o registro para a equipe", respond)
+
     def test_prompts_name_the_required_fields_and_the_vocabulary(self):
         prompt = assembly.build_system(LIBRARY, OPERATOR, assembly.RESPOND)
         self.assertIn("code, description, location, time", prompt)

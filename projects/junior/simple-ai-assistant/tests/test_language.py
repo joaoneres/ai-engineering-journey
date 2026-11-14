@@ -9,6 +9,8 @@ from ai_assistant.library import PROJECT_ROOT
 ACCENTED = re.compile("[áéíóúâêôãõçÁÉÍÓÚÂÊÔÃÕÇ]")
 # The company name is a proper noun, not Portuguese prose.
 BRAND = re.compile("FilaFácil|Logística|logística")
+# A Portuguese sample quoted inside an English instruction is an example, not an instruction.
+QUOTED_SAMPLE = re.compile(r'\\"[^"]*\\"')
 SOURCE = PROJECT_ROOT / "src" / "ai_assistant"
 
 
@@ -30,7 +32,8 @@ class LanguageTests(unittest.TestCase):
                 key = line.split("=", 1)[0].strip()
                 if key in ("input", "output", "note"):
                     continue
-                if ACCENTED.search(BRAND.sub("", line)) and "não informado" not in line:
+                prose = QUOTED_SAMPLE.sub("", BRAND.sub("", line))
+                if ACCENTED.search(prose):
                     offenders.append(f"{path.name}:{number}: {line.strip()}")
         self.assertEqual(offenders, [])
 

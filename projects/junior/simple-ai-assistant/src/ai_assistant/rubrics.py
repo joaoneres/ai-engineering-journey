@@ -23,6 +23,7 @@ from dataclasses import dataclass
 HUMAN_ESCALATION = "human_escalation"
 UNCLEAR = "unclear"
 ASKING_ACTIONS = ("ask_missing_information", "escalate_to_human")
+CONCLUDING_ACTIONS = ("hand_off_to_team", "close")
 
 CODE_PATTERN = re.compile(r"\b[A-Z]{2,5}\d{2,6}\b")
 DATE_PATTERN = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b|\b(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?\b")
@@ -32,7 +33,8 @@ SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+|\n+")
 ALLOWED_CAPITALISED = frozenset({"logística", "brasil", "ia"})
 # First-person Portuguese verbs that claim an action this assistant cannot perform.
 FALSE_ACTION_PATTERN = re.compile(
-    r"\b(registrei|gravei|salvei|cancelei|agendei|cadastrei|alterei|atualizei|corrigi)\b",
+    r"\b(registrei|gravei|salvei|cancelei|agendei|cadastrei|alterei|atualizei|corrigi|anotei"
+    r"|adicionei|inseri|anexei)\b",
     re.IGNORECASE,
 )
 
@@ -219,8 +221,12 @@ def check_internal_note(note: dict, evidence: Evidence) -> list[str]:
     return errors + check_entities(note["text"], evidence, "internal_note.text")
 
 
-def check_next_action(action: str, intent: str, missing: tuple[str, ...]) -> list[str]:
+def check_next_action(
+    action: str, intent: str, missing: tuple[str, ...], conclude_with: str | None = None
+) -> list[str]:
     """The next action must be coherent with the intent and with what is still missing."""
+    if conclude_with and action in CONCLUDING_ACTIONS and action != conclude_with:
+        return [f"next_action: this profile must conclude with '{conclude_with}', not '{action}'"]
     if intent == HUMAN_ESCALATION and action != "escalate_to_human":
         return ["next_action: an escalation intent requires 'escalate_to_human'"]
     if missing and action not in ASKING_ACTIONS:
@@ -253,6 +259,7 @@ def check_respond(
     intent: str,
     missing: tuple[str, ...],
     hidden_fields: tuple[str, ...] = (),
+    conclude_with: str | None = None,
 ) -> list[str]:
     """Check a `respond` answer: facts, texts shown to people, extras and the next action."""
     errors = check_facts(output["facts"], evidence)
@@ -265,4 +272,4 @@ def check_respond(
         errors += check_internal_note(output["internal_note"], evidence)
     if "record" in output:
         errors += check_record(output["record"], evidence)
-    return errors + check_next_action(output["next_action"], intent, missing)
+    return errors + check_next_action(output["next_action"], intent, missing, conclude_with)

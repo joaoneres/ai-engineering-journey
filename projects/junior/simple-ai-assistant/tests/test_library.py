@@ -49,6 +49,11 @@ class LibraryLoadTests(unittest.TestCase):
         for profile_id in ("operator", "partner", "driver"):
             self.assertEqual(self.library.profiles[profile_id].hidden_fields, ())
 
+    def test_only_the_driver_must_always_conclude_by_escalating(self):
+        self.assertEqual(self.library.profiles["driver"].conclude_with, "escalate_to_human")
+        for profile_id in ("customer", "operator", "partner"):
+            self.assertIsNone(self.library.profiles[profile_id].conclude_with)
+
     def test_tasks_for_splits_the_profile_tasks_by_stage(self):
         understand = self.library.tasks_for("operator", "understand")
         respond = self.library.tasks_for("operator", "respond")
@@ -126,6 +131,10 @@ class LibraryValidationTests(unittest.TestCase):
     def test_refuses_a_profile_that_cannot_escalate(self):
         self.edit("profiles/customer.toml", ', "human_escalation"', "")
         self.assertRefused("customer.toml", "human_escalation")
+
+    def test_refuses_a_profile_that_concludes_with_an_unknown_action(self):
+        self.edit("profiles/driver.toml", '"escalate_to_human"\n', '"fly_away"\n')
+        self.assertRefused("driver.toml", "conclude_with")
 
     def test_refuses_a_profile_with_an_unknown_task(self):
         self.edit("profiles/driver.toml", '"text_transformation"', '"magic"')

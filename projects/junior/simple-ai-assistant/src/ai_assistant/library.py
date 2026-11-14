@@ -68,6 +68,7 @@ class Profile:
     required_fields: tuple[str, ...]
     tasks: tuple[str, ...]
     hidden_fields: tuple[str, ...] = ()
+    conclude_with: str | None = None
 
 
 @dataclass(frozen=True)
@@ -203,6 +204,17 @@ def _load_rules_and_vocabulary(path: Path) -> tuple[tuple[str, ...], Vocabulary]
 # --- Profiles ---------------------------------------------------------------------------------
 
 
+def _conclusion(data: dict, vocabulary: Vocabulary, where: str) -> str | None:
+    action = data.get("conclude_with")
+    if action is None:
+        return None
+    if action not in vocabulary.next_actions:
+        raise LibraryError(
+            f"{where}: 'conclude_with' must be one of {list(vocabulary.next_actions)}"
+        )
+    return action
+
+
 def _load_profile(path: Path, prompts: dict[str, Prompt], vocabulary: Vocabulary) -> Profile:
     data = _read_toml(path)
     where = path.name
@@ -233,6 +245,7 @@ def _load_profile(path: Path, prompts: dict[str, Prompt], vocabulary: Vocabulary
         required_fields=_text_list(data, "required_fields", where),
         tasks=tasks,
         hidden_fields=_text_list(data, "hidden_fields", where) if "hidden_fields" in data else (),
+        conclude_with=_conclusion(data, vocabulary, where),
     )
 
 
