@@ -198,6 +198,31 @@ class GuidedRetryTests(unittest.TestCase):
         self.assertIn("cannot perform", model.calls[2][1])
 
 
+class DisclosureFlowTests(unittest.TestCase):
+    def test_the_customer_profile_cannot_reveal_the_name_or_address_from_the_base(self):
+        leaking = customer_respond(
+            speech=(
+                "O pacote ABC123 está em nome de Maria Souza, na Rua das Flores, 123. "
+                "Qual é o seu nome?"
+            )
+        )
+        _, model, result = run(
+            "customer",
+            "meu pacote ABC123 não chegou",
+            [customer_understand(), leaking, customer_respond()],
+        )
+        self.assertIsNone(result.failure)
+        self.assertEqual(result.model_calls, 3)
+        self.assertIn("reveals the source field", model.calls[2][1])
+
+    def test_the_driver_profile_may_show_the_registered_address(self):
+        scenario = load_scenario("driver")
+        flow = Flow(LIBRARY, scenario.scripted_model(), DELIVERIES)
+        result = flow.turn(flow.start("driver"), scenario.turns[0].user)
+        self.assertIsNone(result.failure)
+        self.assertIn("Rua das Flores, 123", result.speech)
+
+
 class EscalationTests(unittest.TestCase):
     def test_after_three_rejected_answers_the_turn_escalates_to_a_person(self):
         wrong = customer_respond(speech="Seu pacote ABC123 chega em 22/11/2026. Qual é o seu nome?")
@@ -279,7 +304,7 @@ class NoRepeatedQuestionTests(unittest.TestCase):
             "customer", "meu pacote ABC123 não chegou", [understand, concludes, customer_respond()]
         )
         self.assertIsNone(result.failure)
-        self.assertIn("cannot conclude", model.calls[2][1])
+        self.assertIn("required fields are missing", model.calls[2][1])
 
 
 if __name__ == "__main__":

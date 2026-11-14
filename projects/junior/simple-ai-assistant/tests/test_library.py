@@ -44,6 +44,11 @@ class LibraryLoadTests(unittest.TestCase):
             self.assertIn("classification", profile.tasks)
             self.assertIn("extraction", profile.tasks)
 
+    def test_only_the_customer_hides_source_fields(self):
+        self.assertEqual(self.library.profiles["customer"].hidden_fields, ("customer", "address"))
+        for profile_id in ("operator", "partner", "driver"):
+            self.assertEqual(self.library.profiles[profile_id].hidden_fields, ())
+
     def test_tasks_for_splits_the_profile_tasks_by_stage(self):
         understand = self.library.tasks_for("operator", "understand")
         respond = self.library.tasks_for("operator", "respond")
