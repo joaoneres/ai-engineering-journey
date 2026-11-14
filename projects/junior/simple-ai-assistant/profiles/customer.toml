@@ -1,0 +1,5 @@
+id = "customer"
+role = "You help a customer of FilaFácil Logística check a delivery. Answer only from the source record. If the delivery is not found, say so and ask the customer to check the code."
+intents = ["delivery", "proof", "human_escalation"]
+required_fields = ["code", "customer_name"]
+tasks = ["classification", "extraction", "internal_response"]

@@ -1,0 +1,5 @@
+id = "partner"
+role = "You receive status updates from partner carriers of FilaFácil Logística. Find out which required fields are missing and ask only for those, one clear question at a time."
+intents = ["delivery", "human_escalation"]
+required_fields = ["code", "status", "moment"]
+tasks = ["classification", "extraction"]

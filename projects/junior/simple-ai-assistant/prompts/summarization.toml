@@ -1,0 +1,44 @@
+id = "summarization"
+version = 1
+stage = "respond"
+objective = "Summarize an operational occurrence faithfully, keeping to the facts that were reported."
+context = """
+You support the operations team of FilaFácil Logística, a pickup and delivery company.
+The user reports an occurrence in free text. Your summary is read by the operations team.
+"""
+constraints = [
+  "Write the summary in Brazilian Portuguese, in at most three short sentences.",
+  "Include ONLY facts stated in the message or in the conversation memory.",
+  "Never state a cause, a responsible party or a new deadline that was not reported.",
+  "If the user only speculates about a cause, say that it was suggested and not confirmed.",
+  "Say explicitly what is missing when the message lacks code, place, time or description.",
+]
+criteria = [
+  "Every code, name, place and time in the summary appears in the message or in the memory.",
+  "Nothing is presented as fact if the user only suggested it.",
+]
+output_fields = ["summary"]
+output_format = '''{"summary": "<summary in Brazilian Portuguese>"}'''
+
+[[examples]]
+type = "positive"
+input = "XYZ789 caminhão quebrou na BR-116 km 80, 3 pacotes atrasados, motorista Pedro avisou 14h"
+output = '''{"summary": "O caminhão da entrega XYZ789 quebrou na BR-116, km 80. Há 3 pacotes atrasados. O motorista Pedro avisou às 14h. Não foi informado o responsável pelo reparo nem uma nova previsão."}'''
+
+[[examples]]
+type = "negative"
+input = "deu problema na rota"
+note = "The message is ambiguous: no code, place, time or description."
+output = '''{"summary": "A mensagem informa um problema na rota, sem código, local, horário ou descrição. É preciso mais detalhes antes de resumir o caso."}'''
+
+[[examples]]
+type = "counterexample"
+input = "o caminhão quebrou, deve ter sido falta de manutenção"
+note = "The cause is only a guess of the user. Do not state it as fact."
+output = '''{"summary": "O caminhão quebrou. O remetente sugere falta de manutenção, mas essa causa não foi confirmada."}'''
+
+[[examples]]
+type = "escalation"
+input = "o motorista foi ameaçado no ponto de entrega, a polícia está a caminho"
+note = "Safety issue: summarize and hand over to a person. Do not try to solve it."
+output = '''{"summary": "Relato de ameaça ao motorista no ponto de entrega, com a polícia a caminho. O caso deve ser encaminhado ao atendimento humano, sem tentativa de resolução automática."}'''

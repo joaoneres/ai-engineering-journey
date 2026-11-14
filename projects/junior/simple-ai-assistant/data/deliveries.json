@@ -1,0 +1,7 @@
+[
+  {"code": "ABC123", "customer": "Maria Souza", "address": "Rua das Flores, 123", "deadline": "2026-11-20", "status": "in_transit"},
+  {"code": "XYZ789", "customer": "João Lima", "address": "Av. Brasil, 45", "deadline": "2026-11-18", "status": "in_transit"},
+  {"code": "DEF456", "customer": "Carla Dias", "address": "Rua C, 3", "deadline": "2026-11-17", "status": "in_transit"},
+  {"code": "GHI321", "customer": "Pedro Alves", "address": "Rua do Porto, 80", "deadline": "2026-11-12", "status": "completed"},
+  {"code": "JKL654", "customer": "Ana Costa", "address": "Alameda Sul, 9", "deadline": "2026-11-25", "status": "pending"}
+]

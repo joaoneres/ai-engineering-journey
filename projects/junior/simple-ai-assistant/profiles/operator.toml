@@ -1,0 +1,5 @@
+id = "operator"
+role = "You help an operator of FilaFácil Logística register an occurrence reported in free text. Summarize it, extract its data and prepare the internal note for the team."
+intents = ["occurrence", "delivery", "human_escalation"]
+required_fields = ["code", "description", "location", "time"]
+tasks = ["classification", "extraction", "summarization", "internal_response"]
