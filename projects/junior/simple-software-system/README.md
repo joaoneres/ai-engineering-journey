@@ -1,9 +1,12 @@
-# FilaFácil Logística
+# simple-software-system
+
+FilaFácil Logística, Module 1. A terminal system that registers, lists, filters, updates and summarizes pickups, keeping everything in a single local file.
 
 ## 1. The problem and the solution
 
 The company used to receive pickup requests by message and write everything down in manual spreadsheets, which caused mistakes and made it hard to know what was still pending.
-FilaFácil is a terminal system that registers, lists, filters, updates and summarizes pickups, keeping everything in a single local file.
+
+This project is that terminal system. One local file replaces the spreadsheet.
 
 ## 2. Technologies
 
@@ -37,21 +40,13 @@ simple-software-system/
 There is nothing to install. You only need Python 3.11 or newer.
 
 ```bash
-git clone https://github.com/joaoneres/ai-engineering-journey.git
-cd ai-engineering-journey/projects/junior/simple-software-system
+cd projects/junior/simple-software-system
+python3 main.py        # Linux and macOS. On Windows: python main.py
 ```
 
-Linux and macOS:
+### Tests
 
-```bash
-python3 main.py
-```
-
-Windows:
-
-```bat
-python main.py
-```
+This project has no automated test suite.
 
 ## 5. How to use
 
@@ -130,9 +125,9 @@ Por status: Pendente 1 | Em rota 1 | Concluída 0
 
 **0. Quit**: prints `>> Até logo!` and exits.
 
-## 6. Data and persistence
+## 6. Data
 
-The data lives in `pickups.json`, in the project folder. The file is created automatically on the first registration.
+The data lives in `pickups.json`, in the project folder. The file is created automatically on the first registration. Delete the file to reset it.
 
 ```json
 [
@@ -194,6 +189,10 @@ Technical logs go only to `filafacil.log` (never to the terminal), with date, ti
 - Every update, with id, previous status and new status
 - Failures when writing the file (ERROR), with the error details
 
-## 10. Author
+## 10. Restrictions
+
+Standard library only: no database, no framework and no external dependency. The project has no secrets.
+
+## 11. Author
 
 João França

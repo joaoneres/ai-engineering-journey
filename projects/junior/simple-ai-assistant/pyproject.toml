@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "FilaFácil Logística: a terminal assistant built on a reusable prompt library with grounding and validated LLM output."
 readme = "README.md"
 requires-python = ">=3.11"
-authors = [{ name = "João Vitor" }]
+authors = [{ name = "João França" }]
 dependencies = []
 
 [project.scripts]
