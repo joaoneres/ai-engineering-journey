@@ -18,17 +18,7 @@ This project is that application. It is a new program. It does not change the ea
 
 The handler stays small on purpose. The Workers free plan allows 10 milliseconds of CPU time per request. Waiting for R2 does not count. Parsing a large page framework would.
 
-## 3. Service model
-
-The application is deployed as **PaaS**. Cloudflare runs the runtime, the HTTPS certificate, and the public URL. The repository supplies the program and the configuration. Nobody in this project administers an operating system.
-
-| Model | What it would mean here | Decision |
-| --- | --- | --- |
-| IaaS | A virtual machine, such as the Hostinger VPS in São Paulo or an AWS EC2 instance. The team would install the system, keep a process running, and open a port. The disk of that machine is not object storage. | Not used. It spends the module on the operating system, and a machine left running is a paid resource. |
-| PaaS | Publish the program. The platform starts it when a request arrives and serves it on a URL. | **Used.** Workers matches the size of this module and stays on the free plan. |
-| SaaS | Adopt a finished product and only configure it. | Not used. No finished product is this pickup system. |
-
-## 4. Project structure
+## 3. Project structure
 
 ```
 projects/junior/simple-cloud-pickup/
@@ -43,7 +33,28 @@ projects/junior/simple-cloud-pickup/
 └── README.md
 ```
 
-## 5. What the page does
+## 4. How to run
+
+```bash
+cd projects/junior/simple-cloud-pickup
+npm install
+npm run dev
+```
+
+`npm run dev` starts Wrangler on your machine and simulates R2 in `.wrangler/`. That directory is gitignored. The simulation does not read or write the real bucket. Open the local URL Wrangler prints, register a pickup, and update its status.
+
+Deploying to Cloudflare is section 8.
+
+### Tests
+
+```bash
+npm test
+npm run check
+```
+
+The tests cover the rules and the request flow with an in-memory bucket. They do not call Cloudflare.
+
+## 5. How to use
 
 The interface is in Brazilian Portuguese. Stored values stay in English, as in the local system.
 
@@ -59,49 +70,7 @@ A new pickup receives the next id (highest existing id + 1, or 1) and starts as 
 
 There is no login. Anyone with the URL can register a pickup. Use fictitious data.
 
-## 6. Running locally
-
-```bash
-cd projects/junior/simple-cloud-pickup
-npm install
-npm test
-npm run check
-npm run dev
-```
-
-`npm run dev` starts Wrangler on your machine and simulates R2 in `.wrangler/`. That directory is gitignored. The simulation does not read or write the real bucket. Open the local URL Wrangler prints, register a pickup, and update its status.
-
-The tests cover the rules and the request flow with an in-memory bucket. They do not call Cloudflare.
-
-## 7. Deploy
-
-You need a Cloudflare account that already shows **R2** and **Workers & Pages** in the dashboard. Workers on the free plan needs nothing else. R2, the first time, asks you to add the R2 subscription under **Storage & databases → R2 → Overview**. That checkout can ask for a card. It does not switch Workers to the paid plan. Stay inside the free allowance in section 10 and the expected bill is R$ 0. Do not enable Workers Paid.
-
-In **R2**, create one bucket, or let the command below create it:
-
-| Setting | Value |
-| --- | --- |
-| Name | `filafacil-pickups` |
-| Location | Eastern North America (`enam`) |
-| Storage class | Standard |
-
-Leave public access off. Do not create an API token. The Worker uses the `PICKUPS` binding, not a key.
-
-In **Workers**, do not create an empty function. `npm run deploy` creates the Worker `simple-cloud-pickup` and attaches the binding. `OBJECT_KEY` is already `pickups.json` in `wrangler.toml`. Leave that file as it is. After the bucket command, Wrangler prints the binding snippet again. On a TOML config it does not rewrite the file.
-
-From this project, after `npm install`:
-
-```bash
-npx wrangler login
-npx wrangler r2 bucket create filafacil-pickups --location enam
-npm run deploy
-```
-
-`npx wrangler login` opens a browser and stores the token in Wrangler's own directory, outside this repository. On the first deploy, Wrangler may ask for the account's `workers.dev` subdomain. Pick any name. The command then prints the public URL, `https://simple-cloud-pickup.<that-name>.workers.dev`. The platform provides HTTPS. A custom domain is not required.
-
-Deploy again with `npm run deploy` after a code change. The bucket and the file survive a new deploy.
-
-## 8. Object storage
+## 6. Data
 
 | | |
 | --- | --- |
@@ -130,6 +99,46 @@ A stored file looks like this:
   }
 ]
 ```
+
+Status uses `pending`, `in_transit` and `completed`, the same set as Module 1.
+
+## 7. Service model
+
+The application is deployed as **PaaS**. Cloudflare runs the runtime, the HTTPS certificate, and the public URL. The repository supplies the program and the configuration. Nobody in this project administers an operating system.
+
+| Model | What it would mean here | Decision |
+| --- | --- | --- |
+| IaaS | A virtual machine, such as the Hostinger VPS in São Paulo or an AWS EC2 instance. The team would install the system, keep a process running, and open a port. The disk of that machine is not object storage. | Not used. It spends the module on the operating system, and a machine left running is a paid resource. |
+| PaaS | Publish the program. The platform starts it when a request arrives and serves it on a URL. | **Used.** Workers matches the size of this module and stays on the free plan. |
+| SaaS | Adopt a finished product and only configure it. | Not used. No finished product is this pickup system. |
+
+## 8. Deploy
+
+You need a Cloudflare account that already shows **R2** and **Workers & Pages** in the dashboard. Workers on the free plan needs nothing else. R2, the first time, asks you to add the R2 subscription under **Storage & databases → R2 → Overview**. That checkout can ask for a card. It does not switch Workers to the paid plan. Stay inside the free allowance in section 10 and the expected bill is R$ 0. Do not enable Workers Paid.
+
+In **R2**, create one bucket, or let the command below create it:
+
+| Setting | Value |
+| --- | --- |
+| Name | `filafacil-pickups` |
+| Location | Eastern North America (`enam`) |
+| Storage class | Standard |
+
+Leave public access off. Do not create an API token. The Worker uses the `PICKUPS` binding, not a key.
+
+In **Workers**, do not create an empty function. `npm run deploy` creates the Worker `simple-cloud-pickup` and attaches the binding. `OBJECT_KEY` is already `pickups.json` in `wrangler.toml`. Leave that file as it is. After the bucket command, Wrangler prints the binding snippet again. On a TOML config it does not rewrite the file.
+
+From this project, after `npm install`:
+
+```bash
+npx wrangler login
+npx wrangler r2 bucket create filafacil-pickups --location enam
+npm run deploy
+```
+
+`npx wrangler login` opens a browser and stores the token in Wrangler's own directory, outside this repository. On the first deploy, Wrangler may ask for the account's `workers.dev` subdomain. Pick any name. The command then prints the public URL, `https://simple-cloud-pickup.<that-name>.workers.dev`. The platform provides HTTPS. A custom domain is not required.
+
+Deploy again with `npm run deploy` after a code change. The bucket and the file survive a new deploy.
 
 ## 9. Region and zone
 
@@ -177,6 +186,10 @@ Workers already runs more copies when more people open the page. The part that d
 - `wrangler.toml` holds the worker name, the object key, and the bucket binding. Those are not secrets.
 - The R2 binding replaces an access key. Do not create an R2 API token for this project and do not paste one into the code.
 
-## 13. Author
+## 13. Restrictions
 
-João Vitor
+Fictitious data only. No login. Stay on the Workers free plan and do not enable Workers Paid. The repository holds no API token. Credential details are in section 12.
+
+## 14. Author
+
+João França
