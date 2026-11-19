@@ -8,7 +8,7 @@ version = "1.0.0"
 description = "FilaFácil Logística: operational report for pickups, packaged and published by a CI/CD pipeline."
 readme = "README.md"
 requires-python = ">=3.11"
-authors = [{ name = "João Vitor" }]
+authors = [{ name = "João França" }]
 dependencies = []
 
 [project.scripts]

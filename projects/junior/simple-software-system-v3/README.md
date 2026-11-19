@@ -1,4 +1,6 @@
-# FilaFácil Logística (Module 3: layered architecture)
+# simple-software-system-v3
+
+FilaFácil Logística, Module 3. The same terminal pickup system, reorganized into Controller, Service and Repository, without new features.
 
 ## 1. The problem and the solution
 
@@ -6,7 +8,7 @@ FilaFácil is a terminal system that registers, lists, filters, updates and summ
 
 The first version (`simple-software-system`) worked, but menu, business rules, error handling and file access were mixed in the same functions: `create_pickup` read the terminal, applied the rules and wrote the file at the same time. Every change touched several places.
 
-This version is a **pure refactor**. It reorganizes the same code into three layers, **Controller → Service → Repository**, without adding features. The menu, the messages and the `pickups.json` format are exactly the same as in Module 1, and a smoke test proves it (section 6).
+This version is a **pure refactor**. It reorganizes the same code into three layers, **Controller → Service → Repository**, without adding features. The menu, the messages and the `pickups.json` format are exactly the same as in Module 1, and a smoke test proves it (section 4).
 
 ## 2. Technologies
 
@@ -62,11 +64,19 @@ main.py ──► controller.py ──► service.py ──► repository.py ─
 There is nothing to install. You only need Python 3.11 or newer.
 
 ```bash
-git clone https://github.com/joaoneres/ai-engineering-journey.git
-cd ai-engineering-journey/projects/junior/simple-software-system-v3
-python3 main.py        # Linux and macOS
-python main.py         # Windows
+cd projects/junior/simple-software-system-v3
+python3 main.py        # Linux and macOS. On Windows: python main.py
 ```
+
+### Tests
+
+```bash
+python3 smoke_test.py
+```
+
+It runs the real `main.py` from a temporary copy (your `pickups.json` and `filafacil.log` are never touched) in four scripted sessions: registrations with invalid inputs, filters, status updates (nonexistent id, same status), summary, a second run that loads the saved data, a corrupted `pickups.json`, and an input that ends without `0` (like `Ctrl+D`). The terminal output is compared with `smoke_expected.txt`, which was recorded from the Module 1 code. `OK` means the refactor kept the behavior.
+
+You can also run it against another folder: `python3 smoke_test.py ../simple-software-system`.
 
 ## 5. How to use
 
@@ -83,25 +93,15 @@ The interface is in Portuguese and identical to Module 1. The menu loops until y
 0. Sair                    (Quit)
 ```
 
-The English notes in parentheses are only for this README. Examples of every screen are in the Module 1 README.
+The English notes in parentheses are only for this README. Examples of every screen are in the [Module 1 README](../simple-software-system/README.md).
 
-## 6. How to verify that the behavior did not change
+## 6. Data
 
-```bash
-python3 smoke_test.py
-```
-
-It runs the real `main.py` from a temporary copy (your `pickups.json` and `filafacil.log` are never touched) in four scripted sessions: registrations with invalid inputs, filters, status updates (nonexistent id, same status), summary, a second run that loads the saved data, a corrupted `pickups.json`, and an input that ends without `0` (like `Ctrl+D`). The terminal output is compared with `smoke_expected.txt`, which was recorded from the Module 1 code. `OK` means the refactor kept the behavior.
-
-You can also run it against another folder: `python3 smoke_test.py ../simple-software-system`.
-
-## 7. Data and persistence
-
-Same as Module 1: `pickups.json` in the project folder, created on the first registration, with English stored values (`low/medium/high`, `pending/in_transit/completed`) and Portuguese labels in the menu. A file created by Module 1 loads without any migration. The `id` is generated locally (highest existing id + 1).
+Same as Module 1: `pickups.json` in the project folder, created on the first registration, with English stored values (`low`/`medium`/`high`, `pending`/`in_transit`/`completed`) and Portuguese labels in the menu. Status uses that same set. A file created by Module 1 loads without any migration. Delete the file to reset it. The `id` is generated locally (highest existing id + 1).
 
 The service reads the file on each operation instead of keeping a list in memory, so the controller holds no state.
 
-## 8. Where map, filter and reduce are used
+## 7. Where map, filter and reduce are used
 
 | Function | Where | Why |
 | --- | --- | --- |
@@ -112,7 +112,7 @@ The service reads the file on each operation instead of keeping a list in memory
 | `map` | `cli.print_table` | Turns each pickup into a line of text. |
 | `reduce` | `build_summary`, `count_by` | Adds up packages and accumulates counts per category (including categories with 0). |
 
-## 9. Validation and error handling
+## 8. Validation and error handling
 
 - Name and address never accept empty text; the package count must be an integer greater than zero; priority and status only accept the values in `constants.py`.
 - A nonexistent option, ID, or a new status equal to the current one shows a message and changes nothing.
@@ -120,11 +120,11 @@ The service reads the file on each operation instead of keeping a list in memory
 - If writing the file fails, the user gets a warning and nothing is saved.
 - `Ctrl+C` and end of input exit with a friendly message and no traceback.
 
-## 10. Logs
+## 9. Logs
 
 Technical logs go only to `filafacil.log`: start and stop, file problems, every write, every registration and every status update (the service logs them, since they are business events).
 
-## 11. What changed from Module 1
+## 10. What changed from Module 1
 
 | Module 1 | Module 3 |
 | --- | --- |
@@ -135,6 +135,10 @@ Technical logs go only to `filafacil.log`: start and stop, file problems, every 
 | Save-or-warn block repeated in two handlers | One `save_pickups` in the service, one `SaveError` handling in the controller |
 | `if/elif` chain in the menu loop | `ACTIONS` table |
 
+## 11. Restrictions
+
+Same limits as Module 1: standard library only, no database, no framework, no API, no secrets. No new features. The smoke test is the check that the behavior stayed the same.
+
 ## 12. Author
 
-João Vitor
+João França

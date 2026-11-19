@@ -43,17 +43,17 @@ projects/junior/simple-report-pipeline/
 └── README.md
 ```
 
-## 4. Running locally
+## 4. How to run
 
 ```bash
 cd projects/junior/simple-report-pipeline
 python3.13 -m venv .venv && source .venv/bin/activate      # any Python 3.11+
 pip install -r requirements-dev.txt && pip install -e .
+```
 
-simple-report samples/pickups.json                  # text report
-simple-report samples/pickups.json --format json    # JSON report
-simple-report --version
+### Tests
 
+```bash
 python -m unittest discover -s tests -t .           # tests
 ruff format --check . && ruff check .               # format and lint
 ```
@@ -75,7 +75,25 @@ It prints the same job names as GitHub, stops at the first failure and marks the
 What only exists on GitHub: the triggers, the Environments, the automatic `GITHUB_TOKEN`, artifact
 upload/download, the Release, `concurrency` and the run summary.
 
-## 5. Pipeline
+## 5. How to use
+
+```bash
+simple-report samples/pickups.json                  # text report
+simple-report samples/pickups.json --format json    # JSON report
+simple-report --version
+```
+
+## 6. Data
+
+The CLI reads a JSON list of pickups. `samples/pickups.json` is the sample. The program does not
+write this file.
+
+Each record has the same fields as Module 1: `id`, `customer_name`, `address`, `package_count`,
+`priority` (`low`, `medium`, `high`) and `status` (`pending`, `in_transit`, `completed`).
+
+The build artifact (`manifest.json`) is described in section 9.
+
+## 7. Pipeline
 
 ```
 Qualidade ──► Testes (3.11 e 3.13) ──► Build ──► Publicar
@@ -89,6 +107,7 @@ Qualidade ──► Testes (3.11 e 3.13) ──► Build ──► Publicar
 | `Publicar` | verifies checksums, checks secrets, skips duplicates, publishes, writes the run summary | missing secret, checksum, publication failure |
 
 Every job is named `simple-report-pipeline · <Job>`, and `needs` makes the dependency explicit.
+Where the workflow file lives, and why it is outside this folder, is in [PIPELINE.md](PIPELINE.md).
 
 ### Triggers
 
@@ -103,7 +122,7 @@ Every job is named `simple-report-pipeline · <Job>`, and `needs` makes the depe
 The workflow only reacts to changes under `projects/junior/simple-report-pipeline/` and to the
 workflow file itself. The tag carries the project prefix because the repository holds many projects.
 
-## 6. Environments, variables and secrets
+## 8. Environments, variables and secrets
 
 | Environment | `config/*.env` | `PUBLISH_TOKEN` required |
 | --- | --- | --- |
@@ -130,7 +149,7 @@ workflow file itself. The tag carries the project prefix because the repository 
 > GitHub Release with the files. There is no real production deployment, no external registry and
 > no paid service, as the case study requires.
 
-## 7. Artifact and traceability
+## 9. Artifact and traceability
 
 Every build produces `dist-<version>-<sha7>` with the wheel, the source distribution and
 `manifest.json`:
@@ -152,7 +171,7 @@ stored next to the files as `registry-<environment>-<version>-<sha7>`. For tags,
 attached to the GitHub Release. Version is the single source of truth in `pyproject.toml`; a tag
 build fails if `simple-report-vX.Y.Z` does not match it.
 
-## 8. Re-running without duplicating
+## 10. Re-running without duplicating
 
 The publication id is `<environment>-<version>-<sha7>`. Before publishing, `publish.py` looks for an
 existing artifact with that id (and for an existing Release when there is a tag). If it exists, the
@@ -160,7 +179,7 @@ job succeeds saying `já publicado; nada a fazer (sem duplicar)`. `concurrency` 
 the same environment instead of running them in parallel. Re-running jobs or dispatching again never
 creates a second artifact.
 
-## 9. Diagnosing failures
+## 11. Diagnosing failures
 
 Each failure below was reproduced in a real run (the throwaway branches were deleted afterwards).
 In every case the next jobs show as *skipped* and `Publicar` never runs.
@@ -178,14 +197,14 @@ How to read a failed run: open the run, find the red job, open the red step. `sc
 exit codes: 2 bad manifest, 3 secret missing, 4 checksum mismatch, 5 publication failed.
 Reproduce any of them with `python scripts/run_local.py`.
 
-## 10. Releasing a version
+## 12. Releasing a version
 
 1. Change `version` in `pyproject.toml` and merge it to `main` (publishes to homolog).
 2. Create the tag and push it:
    ```bash
    git tag simple-report-v1.0.0 && git push origin simple-report-v1.0.0
    ```
-3. The pipeline runs against `prod`, needs the `PUBLISH_TOKEN` secret (section 6) and creates the
+3. The pipeline runs against `prod`, needs the `PUBLISH_TOKEN` secret (section 8) and creates the
    GitHub Release with the wheel, the sdist and `manifest.json`.
 
 Version 1.0.0 was released this way: [run of the tag](https://github.com/joaoneres/ai-engineering-journey/actions/runs/43543018056)
@@ -193,7 +212,7 @@ and [Release `simple-report-v1.0.0`](https://github.com/joaoneres/ai-engineering
 (wheel, sdist and `manifest.json` with `status: published`). Re-running that same run (attempt 2)
 logged `já publicado; nada a fazer (sem duplicar)` and created nothing new.
 
-## 11. Making the checks block merges (required before any productive use)
+## 13. Making the checks block merges (required before any productive use)
 
 > **Recommendation: if this project goes to production or is used in a productive way, configure
 > the branch protection below. Without it, the pipeline does not stop anyone from merging.**
@@ -215,11 +234,11 @@ Caveat: the workflow only runs for changes in this project, so a required check 
 pull requests that touch only other projects. In a repository dedicated to this project this does
 not happen; in a shared one, add a path-independent job or use a ruleset.
 
-## 12. Restrictions respected
+## 14. Restrictions
 
 No real deployment, no Kubernetes, a single CI/CD provider, no paid or external registry, no
 secrets in the repository and a small test suite.
 
-## 13. Author
+## 15. Author
 
-João Vitor
+João França

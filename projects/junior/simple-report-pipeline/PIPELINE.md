@@ -22,4 +22,4 @@ The full description (triggers, environments, secrets, artifact, failure diagnos
 
 **Important for productive use:** the workflow reports the checks but does not block merges; that
 needs branch protection on `main`, which is not set in this repository because it is an aggregate
-of study projects. If this project goes to production, configure it (README, section 11).
+of study projects. If this project goes to production, configure it (README, section 13).

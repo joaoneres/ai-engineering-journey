@@ -1,8 +1,11 @@
-# FilaFácil Logística — Module 2
+# simple-software-system-v2
+
+FilaFácil Logística, Module 2. The same terminal pickup system, split into layers, with a ViaCEP lookup, a central application state and unit tests.
 
 ## 1. The problem and the solution
 
 Module 1 worked, but the code was concentrated in a few files, with long functions, duplicated logic, no tests, no shared state and no external integration.
+
 Module 2 evolves the same terminal system: it is split into layers, calls a REST API (ViaCEP) when a pickup is registered, keeps a central application state, handles errors by origin and has unit tests for the business rules.
 
 Still a local terminal application: no web interface, no database, no authentication, no heavy framework.
@@ -46,12 +49,11 @@ simple-software-system-v2/
 No installation needed, only Python 3.11 or newer.
 
 ```bash
-git clone https://github.com/joaoneres/ai-engineering-journey.git
-cd ai-engineering-journey/projects/junior/simple-software-system-v2
-python3 main.py          # Windows: python main.py
+cd projects/junior/simple-software-system-v2
+python3 main.py          # Linux and macOS. On Windows: python main.py
 ```
 
-## 5. How to run the tests
+### Tests
 
 ```bash
 python3 -m unittest discover -s tests -t .
@@ -67,7 +69,7 @@ The tests use no network and never touch the real `pickups.json` (fake API trans
 | `test_storage.py` | missing/invalid file, round trip, failed write keeps the previous file |
 | `test_service.py` | registration with/without API data, API and file failures |
 
-## 6. How to use
+## 5. How to use
 
 ```
 === FilaFácil Logística ===
@@ -102,17 +104,11 @@ ID   | Cliente      | Endereço            | Cidade/UF    | Pacotes | Prioridade
 
 **3 and 4. Filters** by status and by priority. They are stored in the state, so they combine (status **and** priority) and stay active for the option 2 listing until **7. Limpar filtros**.
 
-**5. Update status**, **6. Operational summary** and **0. Quit** work as in Module 1.
+**5. Update status**, **6. Operational summary** and **0. Quit** work as in [Module 1](../simple-software-system/README.md).
 
-## 7. REST API and async flow
+## 6. Data
 
-- API used: **ViaCEP** (`GET https://viacep.com.br/ws/{cep}/json/`). The JSON response gives `logradouro`, `bairro`, `localidade` and `uf`.
-- Registration `await`s the API **before** saving: a pickup is never finalized before the response arrives or the failure is handled.
-- The blocking `urllib` call (and the file I/O) runs in `asyncio.to_thread`, so the code uses `async/await` end to end. Timeout: 5 seconds.
-- If the API fails (no network, timeout, HTTP error, unknown CEP, invalid JSON), the user sees a clear message and chooses: register **without** CEP data (`"enriched": false`) or cancel. The system never crashes.
-- The client accepts an injectable `transport`, which is how the tests simulate the API offline.
-
-Stored data (CEP fields appear only when the API answered):
+`pickups.json` lives in the project folder and is created on the first registration. Delete the file to reset it. CEP fields appear only when the API answered:
 
 ```json
 {
@@ -123,7 +119,17 @@ Stored data (CEP fields appear only when the API answered):
 }
 ```
 
-Files created by Module 1 keep working: the CEP fields are optional.
+Status stays `pending`, `in_transit` and `completed`, the same set as Module 1. Files created by Module 1 keep working: the CEP fields are optional. Priority and status labels are the Module 1 labels.
+
+## 7. REST API and async flow
+
+- API used: **ViaCEP** (`GET https://viacep.com.br/ws/{cep}/json/`). The JSON response gives `logradouro`, `bairro`, `localidade` and `uf`.
+- Registration `await`s the API **before** saving: a pickup is never finalized before the response arrives or the failure is handled.
+- The blocking `urllib` call (and the file I/O) runs in `asyncio.to_thread`, so the code uses `async/await` end to end. Timeout: 5 seconds.
+- If the API fails (no network, timeout, HTTP error, unknown CEP, invalid JSON), the user sees a clear message and chooses: register **without** CEP data (`"enriched": false`) or cancel. The system never crashes.
+- The client accepts an injectable `transport`, which is how the tests simulate the API offline.
+
+When the API answers, the pickup gains the CEP fields shown in section 6.
 
 ## 8. Application state
 
@@ -152,6 +158,10 @@ A missing, empty or corrupted `pickups.json` at startup makes the system start w
 
 Work done on branch `feature/module-2-refactor-api-tests`, with one commit per phase (refactor, API + async, state + errors, tests + docs), then a Pull Request merged into `main`.
 
-## 11. Author
+## 11. Restrictions
 
-João Vitor
+Local terminal application: no web interface, no database, no authentication, no heavy framework. ViaCEP is public and needs no key. The tests use no network. The project has no secrets.
+
+## 12. Author
+
+João França
