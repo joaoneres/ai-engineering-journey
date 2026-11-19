@@ -1,15 +1,20 @@
-# FilaFácil Logística
+# simple-database-manegement
 
-A study project that migrates a logistics company's pickup requests from a local JSON file to a local relational database.
-It is a terminal application built with a 3-layer architecture and an ORM, with no web interface or API.
+FilaFácil Logística, relational database module. A terminal application that stores pickup requests in a local SQLite database, through a 3-layer architecture and an ORM.
 
-## Technologies
+## 1. The problem and the solution
+
+The earlier pickup system kept every request in a local JSON file. Every read loaded the whole file, every change rewrote it, and filtering was done by hand in Python. Nothing stopped an invalid or missing field from being saved.
+
+This project moves those requests into one typed table. There is no web interface and no API.
+
+## 2. Technologies
 
 - Python 3.11+
 - SQLite (local file `filafacil.db`)
 - SQLAlchemy 2.x (`DeclarativeBase` / `Mapped` / `mapped_column` style)
 
-## Project structure
+## 3. Project structure
 
 ```
 simple-database-manegement/
@@ -37,60 +42,23 @@ Each layer talks only to the one below it:
 
 `models/` holds the ORM class and `database.py` holds the engine and session factory.
 
-## Database
-
-Single table: `pickups`.
-
-| Column | Type | Rules |
-|---|---|---|
-| `id` | Integer | Primary key, autoincrement |
-| `customer_name` | String(100) | Required |
-| `address` | String(200) | Required |
-| `package_count` | Integer | Required, must be greater than 0 |
-| `priority` | String(10) | `low`, `medium` or `high`; default `medium` |
-| `status` | String(20) | `pending`, `in_transit`, `collected` or `canceled`; default `pending` |
-| `created_at` | DateTime | Filled automatically on insert |
-
-The table also has `CHECK` constraints, so the database itself rejects `package_count <= 0` and any `priority` or `status` outside the accepted values, even for inserts that bypass the application.
-
-The database always stores the English values. The menu shows Portuguese labels:
-
-| `priority` | Menu label | | `status` | Menu label |
-|---|---|---|---|---|
-| `low` | Baixa | | `pending` | Pendente |
-| `medium` | Média | | `in_transit` | Em rota |
-| `high` | Alta | | `collected` | Coletada |
-| | | | `canceled` | Cancelada |
-
-The file `filafacil.db` is created automatically on the first run. To reset the database, just delete the file; it is recreated on the next run.
-
-## Setup and run
+## 4. How to run
 
 ```bash
-git clone https://github.com/joaoneres/ai-engineering-journey.git
-cd ai-engineering-journey/projects/junior/simple-database-manegement
-```
-
-Create and activate a virtual environment (Python 3.11 or newer):
-
-```bash
-# Linux / macOS
-python3 -m venv .venv
-source .venv/bin/activate
-
-# Windows (PowerShell)
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-```
-
-Install the dependencies and run:
-
-```bash
+cd projects/junior/simple-database-manegement
+python3 -m venv .venv              # Windows: python -m venv .venv
+source .venv/bin/activate          # Windows (PowerShell): .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 python main.py
 ```
 
-## Usage
+Python 3.11 or newer. After the virtual environment is active, `python` is the interpreter inside it.
+
+### Tests
+
+This project has no automated test suite.
+
+## 5. How to use
 
 ```
 ===== FilaFácil Logística =====
@@ -161,7 +129,34 @@ Coleta #1 deletada.
 
 **0. Sair** exits the program. Ctrl+C also exits with a friendly message.
 
-## Validations
+## 6. Data
+
+Single table: `pickups`, in the local file `filafacil.db`. The file is created automatically on the first run. To reset the database, delete the file; it is recreated on the next run.
+
+| Column | Type | Rules |
+|---|---|---|
+| `id` | Integer | Primary key, autoincrement |
+| `customer_name` | String(100) | Required |
+| `address` | String(200) | Required |
+| `package_count` | Integer | Required, must be greater than 0 |
+| `priority` | String(10) | `low`, `medium` or `high`; default `medium` |
+| `status` | String(20) | `pending`, `in_transit`, `collected` or `canceled`; default `pending` |
+| `created_at` | DateTime | Filled automatically on insert |
+
+The table also has `CHECK` constraints, so the database itself rejects `package_count <= 0` and any `priority` or `status` outside the accepted values, even for inserts that bypass the application.
+
+The database always stores the English values. The menu shows Portuguese labels:
+
+| `priority` | Menu label | | `status` | Menu label |
+|---|---|---|---|---|
+| `low` | Baixa | | `pending` | Pendente |
+| `medium` | Média | | `in_transit` | Em rota |
+| `high` | Alta | | `collected` | Coletada |
+| | | | `canceled` | Cancelada |
+
+This status set is not the Module 1 set. Module 1 uses `pending`, `in_transit` and `completed`. This project uses `pending`, `in_transit`, `collected` and `canceled`.
+
+## 7. Validations
 
 - Required text fields (`customer_name`, `address`) cannot be empty or contain only spaces; leading and trailing spaces are trimmed.
 - `package_count` must be an integer greater than 0. Non-numeric input is reported and the user returns to the menu.
@@ -171,7 +166,7 @@ Coleta #1 deletada.
 - Invalid menu options and invalid ordering/filter choices show a message and never crash the program.
 - Validation errors are raised as `ValueError`, and missing records as `LookupError`, both caught in the controller.
 
-## SQL equivalents
+## 8. SQL equivalents
 
 | Repository method | Equivalent SQL |
 |---|---|
@@ -185,12 +180,16 @@ Coleta #1 deletada.
 | `update_status(id, status)` | `UPDATE pickups SET status = ? WHERE id = ?` (after a `SELECT` by id) |
 | `delete(id)` | `DELETE FROM pickups WHERE id = ?` (after a `SELECT` by id) |
 
-## JSON vs. relational database
+## 9. JSON vs. relational database
 
 With the JSON file, every read loaded the whole file into memory, and every change rewrote it. Filtering and sorting were done by hand in Python, and nothing prevented invalid or missing fields from being saved.
 The relational database stores each pickup as a row in a typed table, with a primary key, required columns and defaults enforced by the schema. Queries (`WHERE`, `ORDER BY`) run inside the database, and the ORM maps rows to Python objects, so the code does not write SQL by hand.
 Separating the code into controller, service and repository also isolates the database access in one place, which makes it easier to change or test.
 
-## Author
+## 10. Restrictions
 
-João Vitor
+No web interface and no API. The database is a local SQLite file. The project has no secrets.
+
+## 11. Author
+
+João França
