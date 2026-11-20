@@ -1,6 +1,8 @@
 # Quest
 
-Jogo de perguntas sobre os projetos da FilaFácil. A tela é fixa. As perguntas ficam num pacote local, por nível, e não entram no Git.
+Jogo de perguntas sobre os projetos de cada nível. A tela é fixa. As perguntas ficam num pacote local, por nível, e não entram no Git.
+
+A quest se chama Quest. Ela cobre o que estiver na pasta de projetos do nível. O nome de um sistema, como FilaFácil, só entra na pergunta quando aquele projeto usa esse nome. Um projeto com outro nome entra com o nome dele.
 
 ## 1. Como abrir
 
@@ -18,7 +20,7 @@ O navegador precisa desse servidor. Abrir o `index.html` direto no disco bloquei
 
 ## 2. Como jogar
 
-Cada nível tem três quests: Conceitos (200), Tecnologias (100) e Casos de uso (50). Uma sessão traz 10 perguntas ainda não acertadas. Acerto vale 10 XP e sobe a sequência. Erro zera a sequência e mostra a explicação. O progresso fica no navegador. "Zerar esta campanha" apaga só esse nível.
+Cada nível tem três quests: Conceitos, Tecnologias e Casos de uso. A pergunta é a ideia do projeto, não um detalhe de menu, arquivo ou tecla. A quantidade é a das ideias que os projetos daquele nível sustentam. Uma sessão traz 10 perguntas ainda não acertadas. Acerto vale 10 XP e sobe a sequência. Erro zera a sequência e mostra a explicação. O progresso fica no navegador. "Zerar esta campanha" apaga só esse nível.
 
 ## 3. Como gerar de novo
 

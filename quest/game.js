@@ -11,11 +11,32 @@
   ];
 
   const levels = [
-    { id: "junior", title: "Junior", projects: "projects/junior", icon: "🌱" },
-    { id: "mid-level", title: "Mid-level", projects: "projects/mid-level", icon: "🔧" },
-    { id: "senior", title: "Senior", projects: "projects/senior", icon: "🏛️" },
-    { id: "staff", title: "Staff", projects: "projects/staff", icon: "🚀" },
+    { id: "junior", title: "Junior", tone: "junior", rank: 1 },
+    { id: "mid-level", title: "Mid-level", tone: "mid-level", rank: 2 },
+    { id: "senior", title: "Senior", tone: "senior", rank: 3 },
+    { id: "staff", title: "Staff", tone: "staff", rank: 4 },
   ];
+
+  const icons = {
+    junior:
+      '<svg viewBox="0 0 24 24"><path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8.4 4.4 1.4 5.5 2.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/></svg>',
+    "mid-level":
+      '<svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
+    senior:
+      '<svg viewBox="0 0 24 24"><path d="M3 22h18"/><path d="M6 18v-7"/><path d="M10 18v-7"/><path d="M14 18v-7"/><path d="M18 18v-7"/><path d="m12 2 8 5H4z"/></svg>',
+    staff:
+      '<svg viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>',
+    concept:
+      '<svg viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12c.6.6 1 1.4 1 2h6c0-.6.4-1.4 1-2a7 7 0 0 0-4-12Z"/></svg>',
+    technology:
+      '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg>',
+    usecase:
+      '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/></svg>',
+    review:
+      '<svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 4v5h5"/></svg>',
+    lock:
+      '<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+  };
 
   const ranks = ["Novato", "Aprendiz", "Dev", "Engenheiro", "Arquiteto", "Lenda"];
   const SESSION_SIZE = 10;
@@ -45,50 +66,103 @@
   /* ---------- Entrada ---------- */
 
   async function renderHall() {
-    context.textContent = "Escolha o nível da sua jornada.";
+    const days = touchDayStreak();
+    const packs = await Promise.all(
+      levels.map(function (item) {
+        return readJson(item.id + "/local/pack.json");
+      }),
+    );
+    const rows = levels.map(function (item, index) {
+      const pack = packs[index];
+      const ready = pack && pack.campaignId && Array.isArray(pack.questions) && pack.questions.length;
+      if (!ready) return { item: item, state: "locked", done: 0, total: 0, xp: 0, info: levelInfo(0) };
+      const saved = loadState(keyFor(item.id, pack.campaignId));
+      const done = count(saved.correct);
+      const total = pack.questions.length;
+      return {
+        item: item,
+        state: done >= total ? "done" : "active",
+        done: done,
+        total: total,
+        xp: saved.xp,
+        info: levelInfo(saved.xp),
+      };
+    });
+    const totals = rows.reduce(
+      function (sum, row) {
+        return { done: sum.done + row.done, total: sum.total + row.total, xp: sum.xp + row.xp };
+      },
+      { done: 0, total: 0, xp: 0 },
+    );
+    const current = rows.filter(function (row) {
+      return row.state === "active";
+    })[0] || rows.filter(function (row) {
+      return row.state === "done";
+    }).slice(-1)[0];
+
+    context.textContent = current
+      ? current.item.title + " · " + totals.done + " de " + totals.total + " acertos"
+      : "A jornada abre quando o primeiro pacote existir.";
+
     const view = el("div");
-    view.append(el("div", "section-title", "Níveis"));
-    const grid = el("div", "grid");
-    view.append(grid);
+    view.append(playerSummary(totals, days, current));
+    view.append(el("div", "section-title", "Jornada"));
+    const trail = el("ol", "trail");
+    rows.forEach(function (row) {
+      trail.append(levelCard(row));
+    });
+    view.append(trail);
     app.replaceChildren(view);
+    animateBars(view);
+  }
 
-    for (const item of levels) {
-      const link = el("a", "level");
-      link.href = item.id + "/";
-      link.append(el("span", "emblem", item.icon));
-      link.append(el("strong", null, item.title));
-      const meta = el("span", "meta", item.projects);
-      link.append(meta);
-      link.append(el("span", "go", "→"));
-      const bar = el("div", "bar");
-      const fill = el("span");
-      fill.style.width = "0%";
-      bar.append(fill);
-      link.append(bar);
-      grid.append(link);
-
-      // Progresso de cada nível, quando já existe pacote e campanha.
-      readJson(item.id + "/local/pack.json").then(function (pack) {
-        if (!pack || !pack.campaignId || !Array.isArray(pack.questions)) {
-          meta.textContent = item.projects + " · sem pacote";
-          return;
-        }
-        const state = loadState(keyFor(item.id, pack.campaignId));
-        const done = count(state.correct);
-        const info = levelInfo(state.xp);
-        meta.textContent =
-          "Nv. " + info.n + " · " + done + " de " + pack.questions.length + " acertos · " + state.xp + " XP";
-        requestAnimationFrame(function () {
-          fill.style.width = percent(done, pack.questions.length);
-        });
+  function levelCard(row) {
+    const step = el("li", "trail-step");
+    const locked = row.state === "locked";
+    const node = el(locked ? "div" : "a", "level is-" + row.state);
+    node.dataset.tone = row.item.tone;
+    if (!locked) node.href = row.item.id + "/";
+    if (locked) {
+      node.setAttribute("role", "button");
+      node.tabIndex = 0;
+      node.addEventListener("click", function () {
+        node.classList.remove("shake");
+        void node.offsetWidth;
+        node.classList.add("shake");
       });
     }
+
+    const emblem = el("span", "emblem");
+    emblem.append(icon(row.item.tone));
+    if (row.state === "done") emblem.append(el("span", "seal", "✓"));
+    node.append(emblem);
+
+    const copy = el("span", "card-copy");
+    const head = el("span", "card-head");
+    const name = el("span", "card-name");
+    name.append(el("strong", null, row.item.title));
+    name.append(rankMark(row.item.rank));
+    head.append(name);
+    if (locked) head.append(el("span", "soon", "Em breve"));
+    else head.append(xpLine(row.xp));
+    copy.append(head);
+    if (!locked) copy.append(progressRow(row.done, row.total));
+    node.append(copy);
+
+    if (locked) node.append(icon("lock", "lock"));
+    else node.append(el("span", "cta", ctaLabel(row)));
+    step.append(node);
+    return step;
+  }
+
+  function ctaLabel(row) {
+    if (row.state === "done") return "Rever";
+    if (row.done > 0) return "Continuar";
+    return "Começar";
   }
 
   async function boot(levelId) {
-    const source = await readJson("source.json");
-    const projects = source && source.projects ? source.projects : "projects/" + levelId;
-    context.textContent = "Ligado a " + projects;
+    context.textContent = "Três missões. Acerte para avançar.";
 
     let pack;
     try {
@@ -138,22 +212,20 @@
           return state.correct[question.id];
         }).length;
         const complete = questions.length > 0 && done === questions.length;
-        const button = el("button", "bank" + (complete ? " complete" : ""));
+        const button = el("button", "bank is-" + (complete ? "done" : "active"));
         button.type = "button";
-        button.append(el("span", "emblem", complete ? "🏆" : bank.icon));
-        button.append(el("strong", null, bank.title));
-        button.append(
-          el("span", "meta", done + " de " + questions.length + " · " + bank.hint),
-        );
-        button.append(el("span", "go", "▶"));
-        const bar = el("div", "bar");
-        const fill = el("span");
-        fill.style.width = "0%";
-        bar.append(fill);
-        button.append(bar);
-        requestAnimationFrame(function () {
-          fill.style.width = percent(done, questions.length);
-        });
+        button.dataset.tone = bank.id;
+        const emblem = el("span", "emblem");
+        emblem.append(icon(bank.id));
+        if (complete) emblem.append(el("span", "seal", "✓"));
+        button.append(emblem);
+        const copy = el("span", "card-copy");
+        const head = el("span", "card-head");
+        head.append(el("strong", null, bank.title));
+        head.append(el("span", "soon", bank.hint));
+        copy.append(head, progressRow(done, questions.length));
+        button.append(copy);
+        button.append(el("span", "cta", complete ? "Rever" : done ? "Continuar" : "Começar"));
         button.addEventListener("click", function () {
           startSession(bank.id);
         });
@@ -162,12 +234,19 @@
 
       const wrongCount = reviewPool().length;
       if (wrongCount) {
-        const review = el("button", "bank");
+        const review = el("button", "bank is-active");
         review.type = "button";
-        review.append(el("span", "emblem", "🩹"));
-        review.append(el("strong", null, "Revisar erros"));
-        review.append(el("span", "meta", wrongCount + " para tentar de novo"));
-        review.append(el("span", "go", "▶"));
+        review.dataset.tone = "review";
+        const emblem = el("span", "emblem");
+        emblem.append(icon("review"));
+        review.append(emblem);
+        const copy = el("span", "card-copy");
+        const head = el("span", "card-head");
+        head.append(el("strong", null, "Revisar erros"));
+        head.append(el("span", "soon", wrongCount + " para tentar de novo"));
+        copy.append(head);
+        review.append(copy);
+        review.append(el("span", "cta", "Revisar"));
         review.addEventListener("click", function () {
           startSession("review");
         });
@@ -200,6 +279,7 @@
       row.append(reset, hall);
       view.append(row);
       app.replaceChildren(view);
+      animateBars(view);
     }
 
     function reviewPool() {
@@ -268,7 +348,7 @@
       });
       view.append(card);
 
-      const back = el("button", "ghost", "Abandonar sessão");
+      const back = el("button", "ghost abandon", "Abandonar sessão");
       back.type = "button";
       back.addEventListener("click", renderMap);
       view.append(back);
@@ -319,7 +399,7 @@
       explain.append(question.explanation);
       card.append(explain);
 
-      const next = el("button", "solid", finished ? "Ver resultado →" : "Próxima →");
+      const next = el("button", "solid", finished ? "Ver resultado" : "Próxima");
       next.type = "button";
       next.addEventListener("click", advance);
       card.append(next);
@@ -489,7 +569,7 @@
   }
 
   function keyFor(levelId, campaignId) {
-    return "filafacil-quest:" + levelId + ":" + campaignId;
+    return "quest:" + levelId + ":" + campaignId;
   }
 
   function loadState(key) {
@@ -574,6 +654,104 @@
       items[index] = items[swap];
       items[swap] = current;
     }
+  }
+
+  function playerSummary(totals, days, current) {
+    const ratio = totals.total ? Math.round((totals.done / totals.total) * 100) : 0;
+    const node = el("section", "player");
+    const ring = el("div", "ring");
+    ring.style.setProperty("--p", String(ratio));
+    ring.append(el("span", null, ratio + "%"));
+    const copy = el("div", "player-copy");
+    copy.append(el("strong", null, current ? current.item.title : "Jornada"));
+    copy.append(
+      el(
+        "p",
+        null,
+        totals.total
+          ? totals.done + " de " + totals.total + " acertos nesta jornada"
+          : "Nenhum pacote gerado ainda",
+      ),
+    );
+    const pills = el("div", "player-pills");
+    pills.append(el("span", "pill gold", totals.xp + " XP"));
+    pills.append(el("span", "pill" + (days >= 2 ? " hot" : ""), "🔥 " + days + (days === 1 ? " dia" : " dias")));
+    copy.append(pills);
+    node.append(ring, copy);
+    return node;
+  }
+
+  function xpLine(xp) {
+    const node = el("span", "card-xp");
+    node.append(el("b", null, String(xp)));
+    node.append(" XP");
+    return node;
+  }
+
+  function rankMark(rank) {
+    const node = el("span", "card-rank");
+    const label = el("span", "nv");
+    label.append("Nv.");
+    label.append(el("b", null, String(rank)));
+    const bars = el("span", "bars");
+    for (let step = 1; step <= 4; step += 1) bars.append(el("span", step <= rank ? "on" : ""));
+    node.append(label, bars);
+    return node;
+  }
+
+  function progressRow(done, total) {
+    const row = el("span", "card-progress");
+    const bar = el("div", "bar");
+    const fill = el("span");
+    fill.dataset.goal = percent(done, total);
+    bar.append(fill);
+    row.append(bar, el("span", "card-count", done + " / " + total));
+    return row;
+  }
+
+  function animateBars(root) {
+    requestAnimationFrame(function () {
+      root.querySelectorAll(".bar span").forEach(function (fill) {
+        fill.style.width = fill.dataset.goal || "0%";
+      });
+    });
+  }
+
+  function icon(name, className) {
+    const node = el("span", className || "emblem-icon");
+    node.innerHTML = icons[name] || "";
+    return node;
+  }
+
+  function touchDayStreak() {
+    const key = "quest:days";
+    const today = localDay(new Date());
+    let streak = 1;
+    try {
+      const saved = JSON.parse(localStorage.getItem(key) || "");
+      if (saved && saved.lastDay === today) streak = saved.streak || 1;
+      else if (saved && saved.lastDay === localDay(new Date(Date.now() - 86400000))) {
+        streak = (saved.streak || 0) + 1;
+      }
+    } catch (error) {
+      streak = 1;
+    }
+    try {
+      localStorage.setItem(key, JSON.stringify({ lastDay: today, streak: streak }));
+    } catch (error) {
+      // Sem armazenamento, a sequência vale só nesta abertura.
+    }
+    return streak;
+  }
+
+  function localDay(date) {
+    return (
+      date.getFullYear() +
+      "-" +
+      String(date.getMonth() + 1).padStart(2, "0") +
+      "-" +
+      String(date.getDate()).padStart(2, "0")
+    );
   }
 
   function el(tag, className, text) {
