@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FilaFácil quest pack",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["campaignId", "level", "projects", "questions"],
+  "properties": {
+    "campaignId": { "type": "string", "minLength": 1 },
+    "level": { "type": "string", "minLength": 1 },
+    "projects": { "type": "string", "minLength": 1 },
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "bank", "project", "prompt", "choices", "answer", "explanation"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "bank": { "enum": ["concept", "technology", "usecase"] },
+          "project": { "type": "string", "minLength": 1 },
+          "prompt": { "type": "string", "minLength": 1 },
+          "choices": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "answer": { "type": "integer", "minimum": 0, "maximum": 3 },
+          "explanation": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

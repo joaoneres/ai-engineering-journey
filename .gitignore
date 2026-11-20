@@ -1,3 +1,5 @@
 .claude/
 docs/
 .docs/
+quest/*/local/
+
