@@ -331,7 +331,7 @@
         else if (index === cursor) dot.className = "cur";
         dots.append(dot);
       });
-      stepper.append(dots, el("span", "tag", cursor + 1 + "/" + session.length + " · " + question.project));
+      stepper.append(dots, el("span", "tag", cursor + 1 + "/" + session.length));
       view.append(stepper);
 
       const card = el("article", "card");

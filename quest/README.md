@@ -20,7 +20,7 @@ O navegador precisa desse servidor. Abrir o `index.html` direto no disco bloquei
 
 ## 2. Como jogar
 
-Cada nível tem três quests: Conceitos, Tecnologias e Casos de uso. A pergunta é a ideia do projeto, não um detalhe de menu, arquivo ou tecla. A quantidade é a das ideias que os projetos daquele nível sustentam. Uma sessão traz 10 perguntas ainda não acertadas. Acerto vale 10 XP e sobe a sequência. Erro zera a sequência e mostra a explicação. O progresso fica no navegador. "Zerar esta campanha" apaga só esse nível.
+Cada nível tem três quests: Conceitos, Tecnologias e Casos de uso. A pergunta é um cenário sobre o conceito que os projetos ensinam. O enunciado não cita o projeto. A quantidade é a das ideias que aquele nível sustenta. Uma sessão traz 10 perguntas ainda não acertadas. Acerto vale 10 XP e sobe a sequência. Erro zera a sequência e mostra a explicação. O progresso fica no navegador. "Zerar esta campanha" apaga só esse nível.
 
 ## 3. Como gerar de novo
 
