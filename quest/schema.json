@@ -1,6 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "FilaFácil quest pack",
+  "title": "Quest pack",
+  "description": "Pacote de perguntas de um nível. Cada pergunta fala do projeto indicado em project. O nome de um sistema vale só para o projeto que o usa.",
   "type": "object",
   "additionalProperties": false,
   "required": ["campaignId", "level", "projects", "questions"],
