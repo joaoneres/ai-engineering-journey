@@ -33,7 +33,7 @@ O pacote novo tem um `campaignId` novo, em UTC (`YYYY-MM-DDTHH:MM:SSZ`). O jogo 
 
 A quest não tem um produto global. O nome da tela é Quest. FilaFácil é o nome de alguns projetos dentro de `projects/junior`, não o nome do jogo e não o nome dos outros níveis.
 
-No enunciado, na alternativa e na explicação, use o nome que o próprio projeto mostra: título da interface, módulo ou arquivo. Se o projeto não se chama FilaFácil, a pergunta também não se chama.
+O campo `project` só guarda de qual projeto a ideia saiu. O enunciado, as alternativas e a explicação não citam pasta, módulo, arquivo, menu nem o nome de um sistema.
 
 ## Forma
 
@@ -47,10 +47,10 @@ O JSON obedece a `quest/schema.json`.
 - A explicação diz a ideia. Interface e enunciados em português.
 - Um fato que os arquivos não mostram não vira pergunta.
 
-A pergunta é conceitual. Ela cobra a decisão que o projeto demonstra: o problema, a responsabilidade de uma camada, a garantia, o limite, o que a pessoa consegue fazer. Alguém que entendeu o projeto responde. Alguém que só memorizou o código não precisa responder.
+A pergunta tem cara de prova, não de revisão do repositório. Ela abre com uma situação (alguém, uma necessidade, uma restrição) e pergunta qual princípio, qual tipo de mecanismo ou qual conduta resolve essa situação. As quatro alternativas são do mesmo tipo. A certa é a ideia que o projeto ensina, levada para o cenário. Quem não viu a pasta ainda entende a pergunta. Quem só memorizou o código não leva vantagem.
 
-Não pergunte número de opção de menu, tecla, nome de arquivo, versão de linguagem, nome de função, lista de argumentos nem comportamento de um atalho. "Ctrl+C mostra traceback?" não é uma pergunta desta quest.
+Não escreva "neste módulo", "neste projeto", "na primeira versão" nem o nome da pasta. Não pergunte número de opção, tecla, arquivo, versão, função, argumento nem o que um atalho imprime.
 
-`concept` pergunta a ideia. `technology` pergunta por que a ferramenta está aqui e o que ela faz ou deixa de fazer neste projeto, não a versão nem o nome do método. `usecase` pergunta o que a pessoa realiza, não o que uma opção numerada imprime.
+`concept` oferece princípios de desenho. `technology` oferece tipos de mecanismo, no espírito de "qual capacidade resolve isto", sem citar ferramenta pelo nome do método. `usecase` oferece o que a pessoa deve conseguir fazer, ou o que o sistema deve fazer por ela, diante da situação.
 
-Reparta as perguntas entre os projetos presentes, para um módulo não ficar de fora. Distrator é uma ideia plausível e errada, não uma palavra solta.
+Reparta as ideias entre os projetos presentes, para um módulo não ficar de fora. Distrator é uma conduta plausível e errada para aquela situação, não uma palavra solta.
